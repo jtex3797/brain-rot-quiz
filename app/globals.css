@@ -10,6 +10,16 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* 커스텀 색상 */
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-success: #22c55e;
+  --color-success-hover: #16a34a;
+  --color-error: #ef4444;
+  --color-error-hover: #dc2626;
+  --color-combo: #f59e0b;
+  --color-combo-glow: #fbbf24;
 }
 
 @media (prefers-color-scheme: dark) {
