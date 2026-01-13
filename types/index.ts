@@ -67,3 +67,42 @@ export interface QuizResult {
   totalQuestions: number;
   completedAt: Date;
 }
+
+// ============================================
+// Phase 2: AI 관련 타입
+// ============================================
+
+/**
+ * AI 모델 정의
+ */
+export interface AIModel {
+  name: string;
+  provider: any; // LanguageModel type from AI SDK
+  priority: number;
+}
+
+/**
+ * 퀴즈 생성 옵션
+ */
+export interface QuizGenerationOptions {
+  questionCount: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+}
+
+/**
+ * 퀴즈 생성 결과
+ */
+export interface QuizGenerationResult {
+  quiz: Quiz;
+  model: string;
+  tokensUsed?: number;
+}
+
+/**
+ * AI 에러 타입
+ */
+export interface AIError {
+  code: 'RATE_LIMIT' | 'INVALID_API_KEY' | 'NETWORK_ERROR' | 'UNKNOWN';
+  message: string;
+  modelAttempted: string;
+}
