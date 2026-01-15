@@ -1,24 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { QuizPlayer } from '@/components/quiz/QuizPlayer';
 import { Button } from '@/components/ui/Button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { getQuizFromLocal } from '@/lib/utils/storage';
+import { ERROR_MESSAGES } from '@/lib/constants';
 import type { Quiz } from '@/types';
 
+type PageState = 'loading' | 'error' | 'ready';
+
 export default function QuizPage() {
-  const params = useParams();
-  const router = useRouter();
+  const params = useParams<{ id: string }>();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [pageState, setPageState] = useState<PageState>('loading');
 
   useEffect(() => {
-    const quizId = params.id as string;
+    const quizId = params.id;
 
     if (!quizId) {
-      router.push('/');
+      setPageState('error');
       return;
     }
 
@@ -26,16 +28,16 @@ export default function QuizPage() {
     const loadedQuiz = getQuizFromLocal(quizId);
 
     if (!loadedQuiz) {
-      alert('퀴즈를 찾을 수 없습니다');
-      router.push('/');
+      setPageState('error');
       return;
     }
 
     setQuiz(loadedQuiz);
-    setLoading(false);
-  }, [params.id, router]);
+    setPageState('ready');
+  }, [params.id]);
 
-  if (loading) {
+  // 로딩 상태
+  if (pageState === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
@@ -46,113 +48,65 @@ export default function QuizPage() {
     );
   }
 
-  if (!quiz) {
-    return null;
+  // 에러 상태 (퀴즈를 찾을 수 없음)
+  if (pageState === 'error' || !quiz) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="max-w-md w-full text-center">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-error/10 flex items-center justify-center">
+            <svg
+              className="w-10 h-10 text-error"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-2">
+            {ERROR_MESSAGES.QUIZ_NOT_FOUND}
+          </h1>
+          <p className="text-foreground/60 mb-6">
+            요청하신 퀴즈가 존재하지 않거나 삭제되었습니다.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/upload">
+              <Button variant="primary" className="w-full sm:w-auto">
+                새 퀴즈 만들기
+              </Button>
+            </Link>
+            <Link href="/">
+              <Button variant="outline" className="w-full sm:w-auto">
+                홈으로 돌아가기
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6 max-w-3xl">
         {/* 헤더 */}
-        <div className="mb-8">
-          <Link href="/" className="text-primary hover:underline mb-4 inline-block">
-            ← 홈으로 돌아가기
+        <div className="mb-6">
+          <Link
+            href="/"
+            className="text-sm text-foreground/60 hover:text-primary transition-colors"
+          >
+            ← 나가기
           </Link>
-          <h1 className="text-4xl font-bold text-foreground">{quiz.title}</h1>
-          <p className="mt-2 text-foreground/70">
-            총 {quiz.questions.length}개의 문제
-          </p>
+          <h1 className="text-2xl font-bold text-foreground mt-2">{quiz.title}</h1>
         </div>
 
-        {/* Phase 2 안내 */}
-        <Card className="mb-8 bg-primary/5 border-primary/20">
-          <CardContent className="pt-6">
-            <h2 className="mb-2 text-lg font-bold text-foreground">
-              🚧 Phase 2 구현 완료!
-            </h2>
-            <p className="text-foreground/70">
-              퀴즈가 성공적으로 생성되었습니다. 실제 퀴즈 풀이 기능은 Phase 3에서 구현됩니다.
-            </p>
-            <ul className="mt-4 space-y-2 text-sm text-foreground/60">
-              <li>✅ AI 퀴즈 생성 엔진</li>
-              <li>✅ 멀티 모델 폴백 시스템</li>
-              <li>✅ 문서 업로드 페이지</li>
-              <li>⏳ 퀴즈 풀이 인터랙션 (Phase 3)</li>
-              <li>⏳ 게이미피케이션 (콤보, XP) (Phase 3)</li>
-              <li>⏳ 애니메이션 효과 (Phase 3)</li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        {/* 생성된 문제 미리보기 */}
-        <div className="space-y-6">
-          <h2 className="text-2xl font-bold text-foreground">생성된 문제</h2>
-
-          {quiz.questions.map((question, index) => (
-            <Card key={question.id}>
-              <CardHeader>
-                <CardTitle>
-                  문제 {index + 1}
-                  <span className="ml-2 text-sm font-normal text-foreground/60">
-                    ({
-                      question.type === 'mcq' ? '객관식' :
-                      question.type === 'ox' ? 'OX' :
-                      question.type === 'short' ? '단답형' :
-                      '빈칸 채우기'
-                    })
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* 문제 텍스트 */}
-                <div className="text-lg text-foreground">
-                  {question.questionText}
-                </div>
-
-                {/* 보기 (객관식/OX인 경우) */}
-                {question.options && question.options.length > 0 && (
-                  <div className="space-y-2">
-                    {question.options.map((option, optIndex) => (
-                      <div
-                        key={optIndex}
-                        className="rounded-lg border-2 border-foreground/20 p-3 text-foreground"
-                      >
-                        {option}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* 정답 표시 (미리보기용) */}
-                <div className="rounded-lg bg-success/10 border border-success/20 p-3">
-                  <span className="font-semibold text-success">정답:</span>{' '}
-                  <span className="text-foreground">{question.correctAnswer}</span>
-                </div>
-
-                {/* 해설 */}
-                {question.explanation && (
-                  <div className="rounded-lg bg-foreground/5 p-3 text-sm text-foreground/70">
-                    <span className="font-semibold">해설:</span> {question.explanation}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* 하단 버튼 */}
-        <div className="mt-8 flex gap-4">
-          <Link href="/upload">
-            <Button variant="outline" size="lg">
-              새 퀴즈 만들기
-            </Button>
-          </Link>
-          <Link href="/">
-            <Button variant="ghost" size="lg">
-              홈으로
-            </Button>
-          </Link>
-        </div>
+        {/* 퀴즈 플레이어 */}
+        <QuizPlayer quiz={quiz} />
       </div>
     </div>
   );
