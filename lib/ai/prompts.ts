@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { QuizGenerationOptions } from '@/types';
+import { DIFFICULTY_DESCRIPTIONS } from '@/lib/constants';
 
 /**
  * Zod 스키마: AI 응답 검증용
@@ -63,15 +64,6 @@ export const SYSTEM_PROMPT = `당신은 교육 전문가이자 퀴즈 생성 AI�
 
 **출력 형식:**
 JSON 형식으로 반환하며, 반드시 주어진 스키마를 따라야 합니다.`;
-
-/**
- * 난이도별 설명
- */
-const DIFFICULTY_DESCRIPTIONS = {
-  easy: '쉬운 난이도: 주요 용어와 기본 개념 중심. 객관식 위주.',
-  medium: '보통 난이도: 개념 이해와 적용. 객관식과 OX 혼합.',
-  hard: '어려운 난이도: 심화 개념과 추론. 단답형 포함.',
-};
 
 /**
  * 사용자 프롬프트 생성

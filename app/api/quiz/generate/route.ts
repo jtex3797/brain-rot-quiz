@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateQuizWithFallback, validateQuiz } from '@/lib/ai/generate';
+import {
+  CONTENT_LENGTH,
+  QUESTION_COUNT,
+  ERROR_MESSAGES,
+  type Difficulty,
+} from '@/lib/constants';
 import type { QuizGenerationOptions } from '@/types';
 
 /**
@@ -16,28 +22,29 @@ export async function POST(req: NextRequest) {
     // 입력 검증
     if (!content || typeof content !== 'string') {
       return NextResponse.json(
-        { error: '텍스트 내용이 필요합니다' },
+        { error: ERROR_MESSAGES.CONTENT_REQUIRED },
         { status: 400 }
       );
     }
 
-    if (content.trim().length < 50) {
+    if (content.trim().length < CONTENT_LENGTH.MIN) {
       return NextResponse.json(
-        { error: '텍스트가 너무 짧습니다. 최소 50자 이상 입력해주세요.' },
+        { error: ERROR_MESSAGES.CONTENT_TOO_SHORT },
         { status: 400 }
       );
     }
 
-    if (questionCount < 1 || questionCount > 20) {
+    if (questionCount < QUESTION_COUNT.MIN || questionCount > QUESTION_COUNT.MAX) {
       return NextResponse.json(
-        { error: '문제 수는 1개에서 20개 사이여야 합니다' },
+        { error: ERROR_MESSAGES.INVALID_QUESTION_COUNT },
         { status: 400 }
       );
     }
 
-    if (!['easy', 'medium', 'hard'].includes(difficulty)) {
+    const validDifficulties: Difficulty[] = ['easy', 'medium', 'hard'];
+    if (!validDifficulties.includes(difficulty)) {
       return NextResponse.json(
-        { error: '유효하지 않은 난이도입니다' },
+        { error: ERROR_MESSAGES.INVALID_DIFFICULTY },
         { status: 400 }
       );
     }
@@ -45,7 +52,7 @@ export async function POST(req: NextRequest) {
     // 퀴즈 생성 옵션
     const options: QuizGenerationOptions = {
       questionCount,
-      difficulty: difficulty as 'easy' | 'medium' | 'hard',
+      difficulty: difficulty as Difficulty,
     };
 
     console.log('[API] Generating quiz...', { contentLength: content.length, options });
@@ -58,7 +65,7 @@ export async function POST(req: NextRequest) {
     if (!validation.valid) {
       console.error('[API] Invalid quiz generated:', validation.errors);
       return NextResponse.json(
-        { error: '퀴즈 생성 중 오류가 발생했습니다', details: validation.errors },
+        { error: ERROR_MESSAGES.QUIZ_GENERATION_ERROR, details: validation.errors },
         { status: 500 }
       );
     }
@@ -76,11 +83,11 @@ export async function POST(req: NextRequest) {
       model: result.model,
       tokensUsed: result.tokensUsed,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[API] Error generating quiz:', error);
 
     // 사용자 친화적인 에러 메시지
-    const errorMessage = error.message || '퀴즈 생성 중 오류가 발생했습니다';
+    const errorMessage = error instanceof Error ? error.message : ERROR_MESSAGES.QUIZ_GENERATION_ERROR;
 
     return NextResponse.json(
       {
@@ -101,7 +108,7 @@ export async function GET() {
   return NextResponse.json({
     status: 'ok',
     message: 'Quiz generation API is running',
-    supportedDifficulties: ['easy', 'medium', 'hard'],
-    questionCountRange: { min: 1, max: 20 },
+    supportedDifficulties: ['easy', 'medium', 'hard'] as Difficulty[],
+    questionCountRange: { min: QUESTION_COUNT.MIN, max: QUESTION_COUNT.MAX },
   });
 }

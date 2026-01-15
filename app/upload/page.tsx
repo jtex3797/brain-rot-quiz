@@ -7,25 +7,31 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { saveQuizToLocal } from '@/lib/utils/storage';
+import {
+  CONTENT_LENGTH,
+  DIFFICULTY_OPTIONS,
+  ERROR_MESSAGES,
+  type Difficulty,
+} from '@/lib/constants';
 import type { Quiz } from '@/types';
 
 export default function UploadPage() {
   const router = useRouter();
   const [content, setContent] = useState('');
   const [questionCount, setQuestionCount] = useState(5);
-  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     if (!content.trim()) {
-      setError('텍스트를 입력해주세요');
+      setError(ERROR_MESSAGES.CONTENT_REQUIRED);
       return;
     }
 
-    if (content.trim().length < 50) {
-      setError('텍스트가 너무 짧습니다. 최소 50자 이상 입력해주세요.');
+    if (content.trim().length < CONTENT_LENGTH.MIN) {
+      setError(ERROR_MESSAGES.CONTENT_TOO_SHORT);
       return;
     }
 
@@ -53,14 +59,14 @@ export default function UploadPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || '퀴즈 생성에 실패했습니다');
+        throw new Error(errorData.error || ERROR_MESSAGES.QUIZ_GENERATION_FAILED);
       }
 
       const data = await response.json();
       setProgress(90);
 
       if (!data.success || !data.quiz) {
-        throw new Error('퀴즈 데이터를 받지 못했습니다');
+        throw new Error(ERROR_MESSAGES.QUIZ_DATA_MISSING);
       }
 
       const quiz: Quiz = data.quiz;
@@ -72,9 +78,10 @@ export default function UploadPage() {
 
       // 퀴즈 페이지로 이동
       router.push(`/quiz/${quiz.id}`);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Quiz generation error:', err);
-      setError(err.message || '퀴즈 생성 중 오류가 발생했습니다');
+      const message = err instanceof Error ? err.message : ERROR_MESSAGES.QUIZ_GENERATION_ERROR;
+      setError(message);
       setProgress(0);
     } finally {
       setLoading(false);
@@ -87,7 +94,7 @@ export default function UploadPage() {
 
     // 텍스트 파일만 허용
     if (!file.type.startsWith('text/')) {
-      setError('텍스트 파일만 업로드 가능합니다');
+      setError(ERROR_MESSAGES.FILE_TEXT_ONLY);
       return;
     }
 
@@ -95,8 +102,8 @@ export default function UploadPage() {
       const text = await file.text();
       setContent(text);
       setError(null);
-    } catch (err) {
-      setError('파일을 읽을 수 없습니다');
+    } catch {
+      setError(ERROR_MESSAGES.FILE_READ_FAILED);
     }
   };
 
@@ -136,7 +143,7 @@ export default function UploadPage() {
                     disabled={loading}
                   />
                   <p className="mt-2 text-sm text-foreground/60">
-                    {content.length} / 최소 50자
+                    {content.length} / 최소 {CONTENT_LENGTH.MIN}자
                   </p>
                 </div>
 
@@ -192,14 +199,10 @@ export default function UploadPage() {
                     난이도
                   </label>
                   <div className="space-y-2">
-                    {[
-                      { value: 'easy', label: '쉬움', desc: '객관식 위주' },
-                      { value: 'medium', label: '보통', desc: '객관식 + OX' },
-                      { value: 'hard', label: '어려움', desc: '단답형 포함' },
-                    ].map((option) => (
+                    {DIFFICULTY_OPTIONS.map((option) => (
                       <button
                         key={option.value}
-                        onClick={() => setDifficulty(option.value as any)}
+                        onClick={() => setDifficulty(option.value)}
                         disabled={loading}
                         className={`w-full rounded-lg border-2 p-3 text-left transition-colors ${
                           difficulty === option.value
@@ -208,7 +211,7 @@ export default function UploadPage() {
                         } disabled:opacity-50`}
                       >
                         <div className="font-medium text-foreground">{option.label}</div>
-                        <div className="text-sm text-foreground/60">{option.desc}</div>
+                        <div className="text-sm text-foreground/60">{option.description}</div>
                       </button>
                     ))}
                   </div>

@@ -1,9 +1,5 @@
 import type { Quiz } from '@/types';
-
-/**
- * 로컬 스토리지 키 접두사
- */
-const QUIZ_KEY_PREFIX = 'brainrotquiz_';
+import { STORAGE_KEY_PREFIX, ERROR_MESSAGES } from '@/lib/constants';
 
 /**
  * 퀴즈를 로컬 스토리지에 저장
@@ -13,11 +9,11 @@ const QUIZ_KEY_PREFIX = 'brainrotquiz_';
  */
 export function saveQuizToLocal(quiz: Quiz): string {
   if (typeof window === 'undefined') {
-    throw new Error('localStorage is only available in the browser');
+    throw new Error(ERROR_MESSAGES.STORAGE_BROWSER_ONLY);
   }
 
   try {
-    const key = `${QUIZ_KEY_PREFIX}${quiz.id}`;
+    const key = `${STORAGE_KEY_PREFIX}${quiz.id}`;
     const serialized = JSON.stringify(quiz);
     localStorage.setItem(key, serialized);
 
@@ -27,7 +23,7 @@ export function saveQuizToLocal(quiz: Quiz): string {
     return quiz.id;
   } catch (error) {
     console.error('Failed to save quiz to localStorage:', error);
-    throw new Error('퀴즈 저장에 실패했습니다');
+    throw new Error(ERROR_MESSAGES.QUIZ_SAVE_FAILED);
   }
 }
 
@@ -43,7 +39,7 @@ export function getQuizFromLocal(id: string): Quiz | null {
   }
 
   try {
-    const key = `${QUIZ_KEY_PREFIX}${id}`;
+    const key = `${STORAGE_KEY_PREFIX}${id}`;
     const data = localStorage.getItem(key);
 
     if (!data) {
@@ -75,7 +71,7 @@ export function getAllQuizIds(): string[] {
   }
 
   try {
-    const listKey = `${QUIZ_KEY_PREFIX}list`;
+    const listKey = `${STORAGE_KEY_PREFIX}list`;
     const data = localStorage.getItem(listKey);
 
     if (!data) {
@@ -99,7 +95,7 @@ function addQuizIdToList(id: string): void {
 
   if (!ids.includes(id)) {
     ids.push(id);
-    const listKey = `${QUIZ_KEY_PREFIX}list`;
+    const listKey = `${STORAGE_KEY_PREFIX}list`;
     localStorage.setItem(listKey, JSON.stringify(ids));
   }
 }
@@ -116,13 +112,13 @@ export function deleteQuizFromLocal(id: string): void {
 
   try {
     // 퀴즈 데이터 삭제
-    const key = `${QUIZ_KEY_PREFIX}${id}`;
+    const key = `${STORAGE_KEY_PREFIX}${id}`;
     localStorage.removeItem(key);
 
     // 목록에서도 제거
     const ids = getAllQuizIds();
     const filtered = ids.filter((qid) => qid !== id);
-    const listKey = `${QUIZ_KEY_PREFIX}list`;
+    const listKey = `${STORAGE_KEY_PREFIX}list`;
     localStorage.setItem(listKey, JSON.stringify(filtered));
   } catch (error) {
     console.error('Failed to delete quiz:', error);
@@ -142,12 +138,12 @@ export function clearAllQuizzes(): void {
 
     // 모든 퀴즈 삭제
     ids.forEach((id) => {
-      const key = `${QUIZ_KEY_PREFIX}${id}`;
+      const key = `${STORAGE_KEY_PREFIX}${id}`;
       localStorage.removeItem(key);
     });
 
     // 목록도 삭제
-    const listKey = `${QUIZ_KEY_PREFIX}list`;
+    const listKey = `${STORAGE_KEY_PREFIX}list`;
     localStorage.removeItem(listKey);
   } catch (error) {
     console.error('Failed to clear quizzes:', error);
