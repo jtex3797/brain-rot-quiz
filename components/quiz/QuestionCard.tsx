@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { OptionButton, OptionState } from './OptionButton';
+import { useQuizSound } from '@/lib/hooks';
 import type { Question } from '@/types';
 
 interface QuestionCardProps {
@@ -24,6 +25,7 @@ export function QuestionCard({
   const [showResult, setShowResult] = useState(false);
   const [shortAnswer, setShortAnswer] = useState('');
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { playCorrect, playWrong } = useQuizSound();
 
   // 문제가 바뀔 때 상태 초기화 및 타이머 정리
   useEffect(() => {
@@ -46,6 +48,13 @@ export function QuestionCard({
 
     const isCorrect = option === question.correctAnswer;
 
+    // 사운드 재생
+    if (isCorrect) {
+      playCorrect();
+    } else {
+      playWrong();
+    }
+
     // 1.5초 후 다음 문제로
     timeoutRef.current = setTimeout(() => {
       onAnswer(option, isCorrect);
@@ -60,6 +69,13 @@ export function QuestionCard({
 
     // 대소문자 무시하고 비교
     const isCorrect = shortAnswer.trim().toLowerCase() === question.correctAnswer.toLowerCase();
+
+    // 사운드 재생
+    if (isCorrect) {
+      playCorrect();
+    } else {
+      playWrong();
+    }
 
     timeoutRef.current = setTimeout(() => {
       onAnswer(shortAnswer.trim(), isCorrect);

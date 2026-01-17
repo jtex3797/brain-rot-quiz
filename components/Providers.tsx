@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react';
 import { ErrorBoundary } from './ErrorBoundary';
+import { SoundProvider } from '@/contexts/SoundContext';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -12,5 +13,9 @@ interface ProvidersProps {
  * ErrorBoundary 및 기타 Context Provider 포함
  */
 export function Providers({ children }: ProvidersProps) {
-  return <ErrorBoundary>{children}</ErrorBoundary>;
+  return (
+    <ErrorBoundary>
+      <SoundProvider>{children}</SoundProvider>
+    </ErrorBoundary>
+  );
 }

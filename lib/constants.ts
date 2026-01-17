@@ -108,6 +108,27 @@ export const TIMING = {
 } as const;
 
 // ============================================
+// 사운드 관련 상수
+// ============================================
+
+/** 사운드 파일 경로 */
+export const SOUND_FILES = {
+  CORRECT: '/sounds/correct.wav',
+  WRONG: '/sounds/wrong.wav',
+} as const;
+
+/** 사운드 설정 */
+export const SOUND_CONFIG = {
+  DEFAULT_VOLUME: 0.5,
+} as const;
+
+/** 사운드 관련 스토리지 키 */
+export const SOUND_STORAGE_KEYS = {
+  ENABLED: `${STORAGE_KEY_PREFIX}sound_enabled`,
+  VOLUME: `${STORAGE_KEY_PREFIX}sound_volume`,
+} as const;
+
+// ============================================
 // 에러 메시지 상수
 // ============================================
 

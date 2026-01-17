@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { ProgressBar } from '@/components/ui/ProgressBar';
+import { SoundToggle } from '@/components/ui/SoundToggle';
 import { QuestionCard } from './QuestionCard';
 import { QuizResult } from './QuizResult';
 import { ComboDisplay, ComboCounter } from './ComboDisplay';
@@ -87,8 +88,11 @@ export function QuizPlayer({ quiz }: QuizPlayerProps) {
             {currentIndex + 1} / {totalQuestions}
           </span>
 
-          {/* 콤보 카운터 */}
-          <ComboCounter combo={combo} />
+          {/* 사운드 토글 + 콤보 카운터 */}
+          <div className="flex items-center gap-2">
+            <SoundToggle />
+            <ComboCounter combo={combo} />
+          </div>
         </div>
 
         {/* 진행바 */}
