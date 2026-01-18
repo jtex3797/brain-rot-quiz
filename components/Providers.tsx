@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { ErrorBoundary } from './ErrorBoundary';
 import { SoundProvider } from '@/contexts/SoundContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -10,12 +11,14 @@ interface ProvidersProps {
 
 /**
  * 클라이언트 사이드 프로바이더 래퍼
- * ErrorBoundary 및 기타 Context Provider 포함
+ * ErrorBoundary, AuthProvider, SoundProvider 포함
  */
 export function Providers({ children }: ProvidersProps) {
   return (
     <ErrorBoundary>
-      <SoundProvider>{children}</SoundProvider>
+      <AuthProvider>
+        <SoundProvider>{children}</SoundProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }
