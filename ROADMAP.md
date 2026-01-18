@@ -90,7 +90,7 @@
 | 스트릭 | :x: | 연속 학습일 | - |
 | 뱃지 시스템 | :x: | 업적 달성 뱃지 | - |
 | 리더보드 | :x: | 주간/월간 랭킹 | - |
-| 사운드 효과 | :x: | 정답/오답 효과음 | - |
+| 사운드 효과 | :white_check_mark: | 정답/오답 효과음 | `lib/hooks/useQuizSound.ts`, `contexts/SoundContext.tsx` |
 
 ---
 
@@ -148,3 +148,4 @@
 | 날짜 | 변경 내용 |
 |------|-----------|
 | 2026-01-15 | 최초 작성, Phase 0-3 완료 표시 |
+| 2026-01-17 | 사운드 효과 구현 완료 (useQuizSound, SoundContext, SoundToggle) |
