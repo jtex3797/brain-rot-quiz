@@ -30,7 +30,7 @@ export function UserMenu() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        className="flex items-center gap-2 p-2 rounded-lg hover:bg-foreground/10 transition-colors"
       >
         {/* 아바타 */}
         {profile?.avatar_url ? (
@@ -44,12 +44,12 @@ export function UserMenu() {
             {initials}
           </div>
         )}
-        <span className="text-sm font-medium text-gray-700 hidden sm:block">
+        <span className="text-sm font-medium text-foreground/80 hidden sm:block">
           {displayName}
         </span>
         {/* 드롭다운 화살표 */}
         <svg
-          className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -60,13 +60,13 @@ export function UserMenu() {
 
       {/* 드롭다운 메뉴 */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+        <div className="absolute right-0 mt-2 w-48 bg-background rounded-lg shadow-lg border border-border py-1 z-50">
           {/* 사용자 정보 */}
-          <div className="px-4 py-2 border-b border-gray-100">
-            <p className="text-sm font-medium text-gray-900">{displayName}</p>
-            <p className="text-xs text-gray-500">{user.email}</p>
+          <div className="px-4 py-2 border-b border-border">
+            <p className="text-sm font-medium text-foreground">{displayName}</p>
+            <p className="text-xs text-muted">{user.email}</p>
             {profile && (
-              <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+              <div className="mt-1 flex items-center gap-2 text-xs text-muted">
                 <span>Lv.{profile.level}</span>
                 <span>|</span>
                 <span>{profile.xp} XP</span>
@@ -78,25 +78,25 @@ export function UserMenu() {
           <Link
             href="/profile"
             onClick={() => setIsOpen(false)}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            className="block px-4 py-2 text-sm text-foreground/80 hover:bg-foreground/5"
           >
             내 프로필
           </Link>
           <Link
             href="/my-quizzes"
             onClick={() => setIsOpen(false)}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            className="block px-4 py-2 text-sm text-foreground/80 hover:bg-foreground/5"
           >
             내 퀴즈
           </Link>
 
-          <div className="border-t border-gray-100 mt-1">
+          <div className="border-t border-border mt-1">
             <button
               onClick={() => {
                 setIsOpen(false);
                 signOut();
               }}
-              className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+              className="block w-full text-left px-4 py-2 text-sm text-error hover:bg-error/10"
             >
               로그아웃
             </button>

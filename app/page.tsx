@@ -1,10 +1,14 @@
+'use client';
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Header } from '@/components/layout/Header';
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background">
+      <Header />
       <main className="container mx-auto px-4 py-16">
         {/* Hero Section */}
         <div className="mb-16 text-center">
