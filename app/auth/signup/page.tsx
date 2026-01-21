@@ -54,13 +54,13 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen flex items-center justify-center bg-card py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8 text-center">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-green-800 mb-2">
+          <div className="bg-success/10 border border-success/20 rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-success mb-2">
               인증 이메일을 확인해주세요!
             </h2>
-            <p className="text-green-600 mb-4">
+            <p className="text-success/80 mb-4">
               {email}로 인증 링크를 보냈습니다.
               <br />
               이메일의 링크를 클릭하여 회원가입을 완료해주세요.
@@ -78,27 +78,27 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-card py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <h1 className="text-center text-3xl font-bold text-gray-900">
+          <h1 className="text-center text-3xl font-bold text-foreground">
             BrainRotQuiz
           </h1>
-          <h2 className="mt-2 text-center text-xl text-gray-600">
+          <h2 className="mt-2 text-center text-xl text-muted">
             회원가입
           </h2>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg text-sm">
               {error}
             </div>
           )}
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-foreground/80">
                 이메일
               </label>
               <input
@@ -109,13 +109,13 @@ export default function SignupPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                className="mt-1 block w-full px-3 py-2 border border-border rounded-lg shadow-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                 placeholder="name@example.com"
               />
             </div>
 
             <div>
-              <label htmlFor="nickname" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="nickname" className="block text-sm font-medium text-foreground/80">
                 닉네임 (선택)
               </label>
               <input
@@ -124,13 +124,13 @@ export default function SignupPage() {
                 type="text"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                className="mt-1 block w-full px-3 py-2 border border-border rounded-lg shadow-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                 placeholder="퀴즈마스터"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-foreground/80">
                 비밀번호
               </label>
               <input
@@ -141,13 +141,13 @@ export default function SignupPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                className="mt-1 block w-full px-3 py-2 border border-border rounded-lg shadow-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                 placeholder="최소 6자 이상"
               />
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground/80">
                 비밀번호 확인
               </label>
               <input
@@ -158,7 +158,7 @@ export default function SignupPage() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                className="mt-1 block w-full px-3 py-2 border border-border rounded-lg shadow-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                 placeholder="비밀번호를 다시 입력"
               />
             </div>
@@ -172,7 +172,7 @@ export default function SignupPage() {
             {isLoading ? '가입 중...' : '회원가입'}
           </Button>
 
-          <p className="text-center text-sm text-gray-600">
+          <p className="text-center text-sm text-muted">
             이미 계정이 있으신가요?{' '}
             <Link
               href="/auth/login"
