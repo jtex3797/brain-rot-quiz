@@ -67,27 +67,28 @@
 
 ---
 
-## Phase 4: Supabase 인증/DB (미구현)
+## Phase 4: Supabase 인증/DB (완료)
 
 | 기능 | 상태 | 설명 | 관련 파일 |
 |------|:----:|------|-----------|
-| Supabase 설정 | :x: | 프로젝트 연동 | - |
-| 회원가입/로그인 | :x: | 이메일 인증 | - |
-| 소셜 로그인 | :x: | Google, Kakao | - |
-| 사용자 프로필 | :x: | 닉네임, 아바타 | - |
-| DB 스키마 | :x: | 마이그레이션 | - |
-| 퀴즈 저장 | :x: | 서버 DB 저장 | - |
-| 세션 기록 | :x: | 풀이 기록 저장 | - |
+| Supabase 설정 | :white_check_mark: | 프로젝트 연동 | `lib/supabase/` |
+| 회원가입/로그인 | :white_check_mark: | 이메일 인증 | `app/auth/`, `contexts/AuthContext.tsx` |
+| 소셜 로그인 | :hourglass: | Google, Kakao (추후) | - |
+| 사용자 프로필 | :white_check_mark: | 닉네임, 아바타 | `types/supabase.ts` |
+| DB 스키마 | :white_check_mark: | 마이그레이션 | `lib/supabase/schema.sql` |
+| 퀴즈 저장 | :white_check_mark: | 생성한 퀴즈를 Supabase에 저장 | `lib/supabase/quiz.ts` |
+| 세션 기록 | :white_check_mark: | quiz_sessions, session_answers 연동 | `lib/supabase/session.ts` |
 
 ---
 
-## Phase 5: 게이미피케이션 확장 (미구현)
+## Phase 5: 게이미피케이션 확장 (진행 중)
 
 | 기능 | 상태 | 설명 | 관련 파일 |
 |------|:----:|------|-----------|
-| XP 시스템 | :x: | 정답당 경험치 | - |
-| 레벨 시스템 | :x: | XP 누적 레벨업 | - |
-| 스트릭 | :x: | 연속 학습일 | - |
+| XP 시스템 | :white_check_mark: | add_xp 함수 호출, 정답당 경험치 | `lib/supabase/session.ts` |
+| 레벨 시스템 | :white_check_mark: | XP 누적 레벨업 | `lib/supabase/schema.sql` |
+| 스트릭 | :white_check_mark: | update_streak 함수, 연속 학습일 | `lib/supabase/session.ts` |
+| XP 획득 UI | :white_check_mark: | 퀴즈 완료 시 XP 표시 | `components/quiz/XPGainDisplay.tsx` |
 | 뱃지 시스템 | :x: | 업적 달성 뱃지 | - |
 | 리더보드 | :x: | 주간/월간 랭킹 | - |
 | 사운드 효과 | :white_check_mark: | 정답/오답 효과음 | `lib/hooks/useQuizSound.ts`, `contexts/SoundContext.tsx` |
@@ -104,6 +105,7 @@
 | 퀴즈 공유 | :x: | 링크 공유 | - |
 | 다크 모드 | :x: | 테마 전환 | - |
 | PWA | :x: | 오프라인 지원 | - |
+| 프로필 페이지 | :x: | /profile 에서 통계 표시 | - |
 | 학습 통계 | :x: | 대시보드 | - |
 
 ---
@@ -149,3 +151,5 @@
 |------|-----------|
 | 2026-01-15 | 최초 작성, Phase 0-3 완료 표시 |
 | 2026-01-17 | 사운드 효과 구현 완료 (useQuizSound, SoundContext, SoundToggle) |
+| 2026-01-21 | Phase 4 Supabase 인증/DB 완료 (이메일 인증, DB 스키마, 퀴즈 저장) |
+| 2026-01-21 | Phase 5 XP/레벨/스트릭 시스템 구현 (XPGainDisplay, useQuizSession) |
