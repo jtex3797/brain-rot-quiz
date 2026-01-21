@@ -105,7 +105,7 @@
 | 퀴즈 공유 | :x: | 링크 공유 | - |
 | 다크 모드 | :x: | 테마 전환 | - |
 | PWA | :x: | 오프라인 지원 | - |
-| 프로필 페이지 | :x: | /profile 에서 통계 표시 | - |
+| 프로필 페이지 | :white_check_mark: | /profile 에서 통계 표시 | `app/profile/page.tsx` |
 | 학습 통계 | :x: | 대시보드 | - |
 
 ---
@@ -153,3 +153,4 @@
 | 2026-01-17 | 사운드 효과 구현 완료 (useQuizSound, SoundContext, SoundToggle) |
 | 2026-01-21 | Phase 4 Supabase 인증/DB 완료 (이메일 인증, DB 스키마, 퀴즈 저장) |
 | 2026-01-21 | Phase 5 XP/레벨/스트릭 시스템 구현 (XPGainDisplay, useQuizSession) |
+| 2026-01-22 | 프로필 페이지 구현 (/profile) |
