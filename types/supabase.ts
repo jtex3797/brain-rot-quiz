@@ -209,7 +209,7 @@ export interface Database {
     Functions: {
       add_xp: {
         Args: {
-          user_id: string;
+          p_user_id: string;
           xp_amount: number;
         };
         Returns: {
@@ -220,10 +220,10 @@ export interface Database {
       };
       update_streak: {
         Args: {
-          user_id: string;
+          p_user_id: string;
         };
         Returns: {
-          current_streak: number;
+          new_streak: number;
           is_new_day: boolean;
         }[];
       };

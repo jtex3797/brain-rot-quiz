@@ -4,7 +4,7 @@
 -- =====================================================
 -- 1. profiles 테이블 (사용자 프로필 + 게이미피케이션)
 -- =====================================================
-CREATE TABLE IF NOT EXISTS profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   nickname TEXT,
@@ -27,19 +27,25 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 -- RLS 정책
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile"
-  ON profiles FOR SELECT
+  ON public.profiles FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile"
-  ON profiles FOR UPDATE
+  ON public.profiles FOR UPDATE
   USING (auth.uid() = id);
 
 -- 신규 가입 시 프로필 자동 생성 트리거
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   INSERT INTO public.profiles (id, email, nickname)
   VALUES (
@@ -49,7 +55,7 @@ BEGIN
   );
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
@@ -60,9 +66,9 @@ CREATE TRIGGER on_auth_user_created
 -- =====================================================
 -- 2. quizzes 테이블
 -- =====================================================
-CREATE TABLE IF NOT EXISTS quizzes (
+CREATE TABLE IF NOT EXISTS public.quizzes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
   source_text TEXT,
 
@@ -76,34 +82,38 @@ CREATE TABLE IF NOT EXISTS quizzes (
   updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_quizzes_user_id ON quizzes(user_id);
-CREATE INDEX IF NOT EXISTS idx_quizzes_share_code ON quizzes(share_code);
+CREATE INDEX IF NOT EXISTS idx_quizzes_user_id ON public.quizzes(user_id);
+CREATE INDEX IF NOT EXISTS idx_quizzes_share_code ON public.quizzes(share_code);
 
-ALTER TABLE quizzes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quizzes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own or public quizzes" ON public.quizzes;
 CREATE POLICY "Users can view own or public quizzes"
-  ON quizzes FOR SELECT
+  ON public.quizzes FOR SELECT
   USING (auth.uid() = user_id OR is_public = TRUE);
 
+DROP POLICY IF EXISTS "Users can create own quizzes" ON public.quizzes;
 CREATE POLICY "Users can create own quizzes"
-  ON quizzes FOR INSERT
+  ON public.quizzes FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own quizzes" ON public.quizzes;
 CREATE POLICY "Users can update own quizzes"
-  ON quizzes FOR UPDATE
+  ON public.quizzes FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own quizzes" ON public.quizzes;
 CREATE POLICY "Users can delete own quizzes"
-  ON quizzes FOR DELETE
+  ON public.quizzes FOR DELETE
   USING (auth.uid() = user_id);
 
 
 -- =====================================================
 -- 3. questions 테이블
 -- =====================================================
-CREATE TABLE IF NOT EXISTS questions (
+CREATE TABLE IF NOT EXISTS public.questions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  quiz_id UUID REFERENCES quizzes(id) ON DELETE CASCADE NOT NULL,
+  quiz_id UUID REFERENCES public.quizzes(id) ON DELETE CASCADE NOT NULL,
 
   type TEXT NOT NULL CHECK (type IN ('mcq', 'ox', 'short', 'fill')),
   question_text TEXT NOT NULL,
@@ -116,34 +126,37 @@ CREATE TABLE IF NOT EXISTS questions (
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_questions_quiz_id ON questions(quiz_id);
+CREATE INDEX IF NOT EXISTS idx_questions_quiz_id ON public.questions(quiz_id);
 
-ALTER TABLE questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Questions follow quiz access" ON public.questions;
 CREATE POLICY "Questions follow quiz access"
-  ON questions FOR SELECT
+  ON public.questions FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM quizzes
+      SELECT 1 FROM public.quizzes
       WHERE quizzes.id = questions.quiz_id
       AND (quizzes.user_id = auth.uid() OR quizzes.is_public = TRUE)
     )
   );
 
+DROP POLICY IF EXISTS "Users can create questions for own quizzes" ON public.questions;
 CREATE POLICY "Users can create questions for own quizzes"
-  ON questions FOR INSERT
+  ON public.questions FOR INSERT
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM quizzes
+      SELECT 1 FROM public.quizzes
       WHERE quizzes.id = quiz_id AND quizzes.user_id = auth.uid()
     )
   );
 
+DROP POLICY IF EXISTS "Users can delete questions from own quizzes" ON public.questions;
 CREATE POLICY "Users can delete questions from own quizzes"
-  ON questions FOR DELETE
+  ON public.questions FOR DELETE
   USING (
     EXISTS (
-      SELECT 1 FROM quizzes
+      SELECT 1 FROM public.quizzes
       WHERE quizzes.id = questions.quiz_id AND quizzes.user_id = auth.uid()
     )
   );
@@ -152,10 +165,10 @@ CREATE POLICY "Users can delete questions from own quizzes"
 -- =====================================================
 -- 4. quiz_sessions 테이블 (플레이 기록)
 -- =====================================================
-CREATE TABLE IF NOT EXISTS quiz_sessions (
+CREATE TABLE IF NOT EXISTS public.quiz_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-  quiz_id UUID REFERENCES quizzes(id) ON DELETE SET NULL,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  quiz_id UUID REFERENCES public.quizzes(id) ON DELETE SET NULL,
 
   score INTEGER NOT NULL,
   correct_count INTEGER NOT NULL,
@@ -169,31 +182,34 @@ CREATE TABLE IF NOT EXISTS quiz_sessions (
   status TEXT DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'completed', 'abandoned'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_quiz_sessions_user_id ON quiz_sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_quiz_sessions_quiz_id ON quiz_sessions(quiz_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_sessions_user_id ON public.quiz_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_sessions_quiz_id ON public.quiz_sessions(quiz_id);
 
-ALTER TABLE quiz_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quiz_sessions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own sessions" ON public.quiz_sessions;
 CREATE POLICY "Users can view own sessions"
-  ON quiz_sessions FOR SELECT
+  ON public.quiz_sessions FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can create own sessions" ON public.quiz_sessions;
 CREATE POLICY "Users can create own sessions"
-  ON quiz_sessions FOR INSERT
+  ON public.quiz_sessions FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own sessions" ON public.quiz_sessions;
 CREATE POLICY "Users can update own sessions"
-  ON quiz_sessions FOR UPDATE
+  ON public.quiz_sessions FOR UPDATE
   USING (auth.uid() = user_id);
 
 
 -- =====================================================
 -- 5. session_answers 테이블 (개별 답변)
 -- =====================================================
-CREATE TABLE IF NOT EXISTS session_answers (
+CREATE TABLE IF NOT EXISTS public.session_answers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id UUID REFERENCES quiz_sessions(id) ON DELETE CASCADE NOT NULL,
-  question_id UUID REFERENCES questions(id) ON DELETE SET NULL,
+  session_id UUID REFERENCES public.quiz_sessions(id) ON DELETE CASCADE NOT NULL,
+  question_id UUID REFERENCES public.questions(id) ON DELETE SET NULL,
 
   user_answer TEXT NOT NULL,
   is_correct BOOLEAN NOT NULL,
@@ -202,25 +218,27 @@ CREATE TABLE IF NOT EXISTS session_answers (
   answered_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_session_answers_session_id ON session_answers(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_answers_session_id ON public.session_answers(session_id);
 
-ALTER TABLE session_answers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.session_answers ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own answers" ON public.session_answers;
 CREATE POLICY "Users can view own answers"
-  ON session_answers FOR SELECT
+  ON public.session_answers FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM quiz_sessions
+      SELECT 1 FROM public.quiz_sessions
       WHERE quiz_sessions.id = session_answers.session_id
       AND quiz_sessions.user_id = auth.uid()
     )
   );
 
+DROP POLICY IF EXISTS "Users can create own answers" ON public.session_answers;
 CREATE POLICY "Users can create own answers"
-  ON session_answers FOR INSERT
+  ON public.session_answers FOR INSERT
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM quiz_sessions
+      SELECT 1 FROM public.quiz_sessions
       WHERE quiz_sessions.id = session_id
       AND quiz_sessions.user_id = auth.uid()
     )
@@ -240,16 +258,20 @@ END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
 -- XP 추가 및 레벨 업데이트 함수
-CREATE OR REPLACE FUNCTION add_xp(p_user_id UUID, xp_amount INTEGER)
-RETURNS TABLE(new_xp INTEGER, new_level INTEGER, level_up BOOLEAN) AS $$
+CREATE OR REPLACE FUNCTION public.add_xp(p_user_id UUID, xp_amount INTEGER)
+RETURNS TABLE(new_xp INTEGER, new_level INTEGER, level_up BOOLEAN)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   old_level INTEGER;
   updated_xp INTEGER;
   updated_level INTEGER;
 BEGIN
-  SELECT level INTO old_level FROM profiles WHERE id = p_user_id;
+  SELECT level INTO old_level FROM public.profiles WHERE id = p_user_id;
 
-  UPDATE profiles
+  UPDATE public.profiles
   SET
     xp = profiles.xp + xp_amount,
     level = calculate_level(profiles.xp + xp_amount),
@@ -259,11 +281,15 @@ BEGIN
 
   RETURN QUERY SELECT updated_xp, updated_level, (updated_level > old_level);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- 스트릭 업데이트 함수
-CREATE OR REPLACE FUNCTION update_streak(p_user_id UUID)
-RETURNS TABLE(new_streak INTEGER, is_new_day BOOLEAN) AS $$
+CREATE OR REPLACE FUNCTION public.update_streak(p_user_id UUID)
+RETURNS TABLE(new_streak INTEGER, is_new_day BOOLEAN)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   last_played TIMESTAMPTZ;
   today DATE := CURRENT_DATE;
@@ -272,7 +298,7 @@ DECLARE
   result_is_new_day BOOLEAN := FALSE;
 BEGIN
   SELECT last_played_at, current_streak INTO last_played, streak_val
-  FROM profiles WHERE id = p_user_id;
+  FROM public.profiles WHERE id = p_user_id;
 
   IF last_played IS NULL OR last_played::DATE < yesterday THEN
     streak_val := 1;
@@ -287,7 +313,7 @@ BEGIN
     result_is_new_day := TRUE;
   END IF;
 
-  UPDATE profiles
+  UPDATE public.profiles
   SET
     current_streak = streak_val,
     longest_streak = GREATEST(longest_streak, streak_val),
@@ -297,4 +323,4 @@ BEGIN
 
   RETURN QUERY SELECT streak_val, result_is_new_day;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
