@@ -4,7 +4,10 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
+import { XPGainDisplay } from './XPGainDisplay';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Question, UserAnswer } from '@/types';
+import type { SessionResult } from '@/lib/supabase/session';
 
 interface QuizResultProps {
   quizTitle: string;
@@ -12,6 +15,7 @@ interface QuizResultProps {
   answers: UserAnswer[];
   maxCombo: number;
   onRetry: () => void;
+  sessionResult?: SessionResult | null;
 }
 
 export function QuizResult({
@@ -20,7 +24,9 @@ export function QuizResult({
   answers,
   maxCombo,
   onRetry,
+  sessionResult,
 }: QuizResultProps) {
+  const { user } = useAuth();
   const [showWrongAnswers, setShowWrongAnswers] = useState(false);
 
   const correctCount = answers.filter((a) => a.isCorrect).length;
@@ -79,6 +85,31 @@ export function QuizResult({
       >
         {quizTitle}
       </motion.p>
+
+      {/* XP 획득 표시 (로그인 사용자) */}
+      {user && sessionResult && sessionResult.xpEarned > 0 && (
+        <XPGainDisplay sessionResult={sessionResult} />
+      )}
+
+      {/* 비로그인 안내 */}
+      {!user && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="bg-primary/10 border border-primary/20 rounded-xl p-4 mb-6 text-center"
+        >
+          <p className="text-foreground/70">
+            <Link
+              href="/auth/login"
+              className="text-primary font-medium hover:underline"
+            >
+              로그인
+            </Link>
+            하면 XP를 획득하고 레벨업 할 수 있어요!
+          </p>
+        </motion.div>
+      )}
 
       {/* 점수 카드 */}
       <motion.div

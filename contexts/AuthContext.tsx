@@ -6,6 +6,7 @@ import {
   useEffect,
   useState,
   useCallback,
+  useMemo,
   type ReactNode,
 } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -31,7 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const supabase = createClient();
+  // 싱글톤 클라이언트 - 재렌더링 시에도 동일 인스턴스 유지
+  const supabase = useMemo(() => createClient(), []);
 
   // 프로필 가져오기
   const fetchProfile = useCallback(async (userId: string) => {

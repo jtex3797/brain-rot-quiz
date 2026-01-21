@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { QuizPlayer } from '@/components/quiz/QuizPlayer';
 import { Button } from '@/components/ui/Button';
 import { getQuizFromLocal } from '@/lib/utils/storage';
+import { useAuth } from '@/contexts/AuthContext';
+import { getQuizFromDb } from '@/lib/supabase/quiz';
 import { ERROR_MESSAGES } from '@/lib/constants';
 import type { Quiz } from '@/types';
 
@@ -13,28 +15,46 @@ type PageState = 'loading' | 'error' | 'ready';
 
 export default function QuizPage() {
   const params = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [isDbQuiz, setIsDbQuiz] = useState(false);
   const [pageState, setPageState] = useState<PageState>('loading');
 
   useEffect(() => {
-    const quizId = params.id;
+    const loadQuiz = async () => {
+      const quizId = params.id;
 
-    if (!quizId) {
-      setPageState('error');
-      return;
-    }
+      if (!quizId) {
+        setPageState('error');
+        return;
+      }
 
-    // 로컬 스토리지에서 퀴즈 로드
-    const loadedQuiz = getQuizFromLocal(quizId);
+      // 로그인 시 DB에서 먼저 시도
+      if (user) {
+        const dbQuiz = await getQuizFromDb(quizId);
+        if (dbQuiz) {
+          setQuiz(dbQuiz);
+          setIsDbQuiz(true);
+          setPageState('ready');
+          return;
+        }
+      }
 
-    if (!loadedQuiz) {
-      setPageState('error');
-      return;
-    }
+      // DB에 없으면 로컬 스토리지에서 로드
+      const loadedQuiz = getQuizFromLocal(quizId);
 
-    setQuiz(loadedQuiz);
-    setPageState('ready');
-  }, [params.id]);
+      if (!loadedQuiz) {
+        setPageState('error');
+        return;
+      }
+
+      setQuiz(loadedQuiz);
+      setIsDbQuiz(false);
+      setPageState('ready');
+    };
+
+    loadQuiz();
+  }, [params.id, user]);
 
   // 로딩 상태
   if (pageState === 'loading') {
@@ -106,7 +126,7 @@ export default function QuizPage() {
         </div>
 
         {/* 퀴즈 플레이어 */}
-        <QuizPlayer quiz={quiz} />
+        <QuizPlayer quiz={quiz} isDbQuiz={isDbQuiz} />
       </div>
     </div>
   );

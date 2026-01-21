@@ -1,20 +1,26 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { SoundToggle } from '@/components/ui/SoundToggle';
 import { QuestionCard } from './QuestionCard';
 import { QuizResult } from './QuizResult';
 import { ComboDisplay, ComboCounter } from './ComboDisplay';
-import { useQuizCombo, useQuizProgress, useQuizAnswers } from '@/lib/hooks';
+import {
+  useQuizCombo,
+  useQuizProgress,
+  useQuizAnswers,
+  useQuizSession,
+} from '@/lib/hooks';
 import type { Quiz } from '@/types';
 
 interface QuizPlayerProps {
   quiz: Quiz;
+  isDbQuiz?: boolean;
 }
 
-export function QuizPlayer({ quiz }: QuizPlayerProps) {
+export function QuizPlayer({ quiz, isDbQuiz = false }: QuizPlayerProps) {
   const totalQuestions = quiz.questions.length;
 
   // 커스텀 훅 사용
@@ -40,7 +46,31 @@ export function QuizPlayer({ quiz }: QuizPlayerProps) {
     reset: resetAnswers,
   } = useQuizAnswers();
 
+  const { submitSession, sessionResult, resetSession } = useQuizSession();
+
+  // 세션 제출 여부 추적 (중복 제출 방지)
+  const sessionSubmittedRef = useRef(false);
+
   const currentQuestion = quiz.questions[currentIndex];
+
+  // 퀴즈 완료 시 세션 저장
+  useEffect(() => {
+    if (isComplete && !sessionSubmittedRef.current) {
+      sessionSubmittedRef.current = true;
+
+      // DB 퀴즈인 경우 questionId 매핑 생성
+      const questionIdMap = isDbQuiz
+        ? new Map(quiz.questions.map((q) => [q.id, q.id]))
+        : undefined;
+
+      submitSession(
+        isDbQuiz ? quiz.id : null,
+        answers,
+        maxCombo,
+        questionIdMap
+      );
+    }
+  }, [isComplete, isDbQuiz, quiz.id, quiz.questions, answers, maxCombo, submitSession]);
 
   const handleAnswer = useCallback(
     (answer: string, isCorrect: boolean) => {
@@ -64,7 +94,9 @@ export function QuizPlayer({ quiz }: QuizPlayerProps) {
     resetProgress();
     resetAnswers();
     resetComboAll();
-  }, [resetProgress, resetAnswers, resetComboAll]);
+    resetSession();
+    sessionSubmittedRef.current = false;
+  }, [resetProgress, resetAnswers, resetComboAll, resetSession]);
 
   if (isComplete) {
     return (
@@ -74,6 +106,7 @@ export function QuizPlayer({ quiz }: QuizPlayerProps) {
         answers={answers}
         maxCombo={maxCombo}
         onRetry={handleRetry}
+        sessionResult={sessionResult}
       />
     );
   }

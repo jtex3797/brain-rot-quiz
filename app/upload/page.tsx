@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { saveQuizToLocal } from '@/lib/utils/storage';
+import { useAuth } from '@/contexts/AuthContext';
+import { saveQuizToDb } from '@/lib/supabase/quiz';
 import {
   CONTENT_LENGTH,
   DIFFICULTY_OPTIONS,
@@ -17,6 +19,7 @@ import type { Quiz } from '@/types';
 
 export default function UploadPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [content, setContent] = useState('');
   const [questionCount, setQuestionCount] = useState(5);
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
@@ -73,6 +76,14 @@ export default function UploadPage() {
 
       // 로컬 스토리지에 저장
       saveQuizToLocal(quiz);
+
+      // 로그인 시 DB에도 저장
+      if (user) {
+        const dbResult = await saveQuizToDb(quiz, user.id, content, difficulty);
+        if (!dbResult.success) {
+          console.warn('DB 저장 실패, localStorage만 사용:', dbResult.error);
+        }
+      }
 
       setProgress(100);
 
