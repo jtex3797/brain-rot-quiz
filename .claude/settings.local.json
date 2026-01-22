@@ -11,7 +11,8 @@
       "Bash(pwd:*)",
       "Bash(mkdir:*)",
       "Bash(touch:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
