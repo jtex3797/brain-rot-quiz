@@ -324,3 +324,68 @@ BEGIN
   RETURN QUERY SELECT streak_val, result_is_new_day;
 END;
 $$;
+
+
+-- =====================================================
+-- 7. quiz_cache 테이블 (AI 생성 퀴즈 캐시)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.quiz_cache (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- 캐시 키: 텍스트 해시 + 옵션 조합
+  content_hash TEXT NOT NULL,
+  options_hash TEXT NOT NULL,
+
+  -- 캐시된 퀴즈 데이터
+  quiz_data JSONB NOT NULL,
+
+  -- 메타데이터
+  hit_count INTEGER DEFAULT 0 NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  last_accessed_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+
+  -- TTL (30일 후 만료)
+  expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '30 days') NOT NULL,
+
+  -- 복합 유니크 제약 (같은 텍스트 + 같은 옵션 = 같은 캐시)
+  UNIQUE(content_hash, options_hash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_cache_hash ON public.quiz_cache(content_hash, options_hash);
+CREATE INDEX IF NOT EXISTS idx_quiz_cache_expires ON public.quiz_cache(expires_at);
+
+-- RLS: 캐시는 모든 사용자가 읽기/쓰기 가능 (공용 캐시)
+ALTER TABLE public.quiz_cache ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can read cache" ON public.quiz_cache;
+CREATE POLICY "Anyone can read cache"
+  ON public.quiz_cache FOR SELECT
+  USING (TRUE);
+
+DROP POLICY IF EXISTS "Anyone can insert cache" ON public.quiz_cache;
+CREATE POLICY "Anyone can insert cache"
+  ON public.quiz_cache FOR INSERT
+  WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "Anyone can update cache" ON public.quiz_cache;
+CREATE POLICY "Anyone can update cache"
+  ON public.quiz_cache FOR UPDATE
+  USING (TRUE);
+
+-- 만료된 캐시 자동 삭제 함수
+CREATE OR REPLACE FUNCTION public.cleanup_expired_cache()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  deleted_count INTEGER;
+BEGIN
+  DELETE FROM public.quiz_cache
+  WHERE expires_at < NOW();
+
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+$$;

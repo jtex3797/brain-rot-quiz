@@ -202,6 +202,38 @@ export interface Database {
           answered_at?: string;
         };
       };
+      quiz_cache: {
+        Row: {
+          id: string;
+          content_hash: string;
+          options_hash: string;
+          quiz_data: Json;
+          hit_count: number;
+          created_at: string;
+          last_accessed_at: string;
+          expires_at: string;
+        };
+        Insert: {
+          id?: string;
+          content_hash: string;
+          options_hash: string;
+          quiz_data: Json;
+          hit_count?: number;
+          created_at?: string;
+          last_accessed_at?: string;
+          expires_at?: string;
+        };
+        Update: {
+          id?: string;
+          content_hash?: string;
+          options_hash?: string;
+          quiz_data?: Json;
+          hit_count?: number;
+          created_at?: string;
+          last_accessed_at?: string;
+          expires_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -226,6 +258,10 @@ export interface Database {
           new_streak: number;
           is_new_day: boolean;
         }[];
+      };
+      cleanup_expired_cache: {
+        Args: Record<string, never>;
+        Returns: number;
       };
     };
     Enums: {

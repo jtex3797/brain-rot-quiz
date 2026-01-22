@@ -1,7 +1,124 @@
 import { generateObject } from 'ai';
 import { getModelsByPriority } from './models';
 import { SYSTEM_PROMPT, createUserPrompt, QuizSchema } from './prompts';
+import { processText, shouldPreprocess } from '@/lib/nlp';
+import {
+  getCachedQuiz,
+  setCachedQuiz,
+  hashContent,
+  hashOptions,
+  type CacheOptions,
+} from '@/lib/cache';
 import type { Quiz, QuizGenerationOptions, QuizGenerationResult, AIError } from '@/types';
+
+// =====================================================
+// 확장된 결과 타입
+// =====================================================
+
+export interface HybridQuizResult extends QuizGenerationResult {
+  cached: boolean;
+  preprocessed: boolean;
+  originalLength?: number;
+  processedLength?: number;
+}
+
+// =====================================================
+// 메인 진입점: 하이브리드 퀴즈 생성
+// =====================================================
+
+/**
+ * 하이브리드 퀴즈 생성
+ *
+ * 파이프라인:
+ * 1. 텍스트 길이 체크 (500자 미만 → AI 직접 전송)
+ * 2. 캐시 확인 (bypassCache가 아닌 경우)
+ * 3. NLP 전처리 (500자 이상)
+ * 4. AI 생성
+ * 5. 캐시 저장
+ */
+export async function generateQuiz(
+  content: string,
+  options: QuizGenerationOptions & CacheOptions
+): Promise<HybridQuizResult> {
+  const originalLength = content.length;
+
+  // 1. 짧은 텍스트는 전처리 없이 바로 AI 생성
+  if (!shouldPreprocess(content)) {
+    console.log(`[Hybrid] Short text (${originalLength} chars), skipping preprocessing`);
+    const result = await generateQuizWithFallback(content, options);
+    return {
+      ...result,
+      cached: false,
+      preprocessed: false,
+      originalLength,
+    };
+  }
+
+  // 2. 캐시 확인 (bypassCache가 아닌 경우)
+  if (!options.bypassCache) {
+    try {
+      const contentHash = await hashContent(content);
+      const optionsHash = await hashOptions(options);
+      const cached = await getCachedQuiz(contentHash, optionsHash);
+
+      if (cached) {
+        console.log(`[Hybrid] Cache HIT for content hash: ${contentHash.slice(0, 8)}...`);
+        return {
+          quiz: cached.quiz,
+          model: cached.model + ' (cached)',
+          cached: true,
+          preprocessed: false,
+          originalLength,
+          processedLength: cached.processedTextLength,
+        };
+      }
+      console.log(`[Hybrid] Cache MISS for content hash: ${contentHash.slice(0, 8)}...`);
+    } catch (error) {
+      console.error('[Hybrid] Cache lookup failed:', error);
+      // 캐시 실패는 무시하고 계속 진행
+    }
+  }
+
+  // 3. NLP 전처리
+  console.log(`[Hybrid] Preprocessing text (${originalLength} chars)...`);
+  const processed = processText(content);
+  const condensedText = processed.topSentences.join('\n\n');
+  const processedLength = condensedText.length;
+
+  console.log(
+    `[Hybrid] Extracted ${processed.topSentences.length} sentences, ` +
+    `${originalLength} → ${processedLength} chars ` +
+    `(${Math.round((1 - processed.extractionRatio) * 100)}% reduction)`
+  );
+
+  // 4. AI 생성 (축소된 텍스트)
+  const result = await generateQuizWithFallback(condensedText, options);
+
+  // 5. 캐시 저장
+  if (!options.bypassCache) {
+    try {
+      const contentHash = await hashContent(content);
+      const optionsHash = await hashOptions(options);
+      await setCachedQuiz(contentHash, optionsHash, {
+        quiz: result.quiz,
+        model: result.model,
+        processedTextLength: processedLength,
+      });
+      console.log(`[Hybrid] Cached quiz for content hash: ${contentHash.slice(0, 8)}...`);
+    } catch (error) {
+      console.error('[Hybrid] Cache save failed:', error);
+      // 캐시 저장 실패는 무시
+    }
+  }
+
+  return {
+    ...result,
+    cached: false,
+    preprocessed: true,
+    originalLength,
+    processedLength,
+  };
+}
 
 /**
  * 멀티 모델 폴백으로 퀴즈 생성
