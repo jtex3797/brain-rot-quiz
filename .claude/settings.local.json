@@ -12,7 +12,8 @@
       "Bash(mkdir:*)",
       "Bash(touch:*)",
       "Bash(echo:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(findstr:*)"
     ]
   }
 }

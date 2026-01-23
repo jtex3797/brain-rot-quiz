@@ -17,8 +17,10 @@ export const STORAGE_KEY_PREFIX = 'brainrotquiz_';
 /** 문제 수 범위 */
 export const QUESTION_COUNT = {
   MIN: 1,
-  MAX: 20,
+  MAX: 50,
   DEFAULT: 5,
+  BATCH_SIZE: 7,
+  MAX_BATCHES: 5,
 } as const;
 
 /** 텍스트 입력 제한 */

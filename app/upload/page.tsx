@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
@@ -16,6 +16,19 @@ import {
   type Difficulty,
 } from '@/lib/constants';
 import type { Quiz } from '@/types';
+import type { QuestionCapacity } from '@/lib/quiz';
+
+// 디바운스 유틸리티
+function debounce<T extends (...args: Parameters<T>) => void>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null;
+  return (...args: Parameters<T>) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
 
 export default function UploadPage() {
   const router = useRouter();
@@ -26,6 +39,52 @@ export default function UploadPage() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  // 텍스트 분석 상태
+  const [textCapacity, setTextCapacity] = useState<QuestionCapacity | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // 텍스트 분석 함수
+  const analyzeContent = useCallback(async (text: string) => {
+    if (text.length < CONTENT_LENGTH.MIN) {
+      setTextCapacity(null);
+      return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+      const response = await fetch('/api/quiz/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: text }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTextCapacity(data.capacity);
+
+        // 현재 선택된 문제 수가 최대를 초과하면 자동 조정
+        if (data.capacity && questionCount > data.capacity.max) {
+          setQuestionCount(data.capacity.optimal);
+        }
+      }
+    } catch (err) {
+      console.error('Text analysis failed:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [questionCount]);
+
+  // 디바운스된 분석 함수
+  const debouncedAnalyze = useMemo(
+    () => debounce(analyzeContent, 500),
+    [analyzeContent]
+  );
+
+  // 텍스트 변경 시 분석 실행
+  useEffect(() => {
+    debouncedAnalyze(content);
+  }, [content, debouncedAnalyze]);
 
   const handleGenerate = async () => {
     if (!content.trim()) {
@@ -186,22 +245,52 @@ export default function UploadPage() {
                 <div>
                   <label htmlFor="questionCount" className="mb-2 block text-sm font-medium text-foreground">
                     문제 수: {questionCount}개
+                    {textCapacity && (
+                      <span className="ml-2 text-xs text-foreground/60">
+                        (최대 {textCapacity.max}개 가능)
+                      </span>
+                    )}
+                    {isAnalyzing && (
+                      <span className="ml-2 text-xs text-foreground/40">분석 중...</span>
+                    )}
                   </label>
                   <input
                     type="range"
                     id="questionCount"
-                    min="3"
-                    max="15"
+                    min={textCapacity?.min || 3}
+                    max={textCapacity?.max || 15}
                     step="1"
                     value={questionCount}
                     onChange={(e) => setQuestionCount(parseInt(e.target.value))}
-                    disabled={loading}
+                    disabled={loading || isAnalyzing}
                     className="w-full"
                   />
                   <div className="mt-1 flex justify-between text-xs text-foreground/60">
-                    <span>3개</span>
-                    <span>15개</span>
+                    <span>{textCapacity?.min || 3}개</span>
+                    <span>{textCapacity?.max || 15}개</span>
                   </div>
+
+                  {/* 용량 인디케이터 */}
+                  {textCapacity && textCapacity.max > 1 && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-foreground/10 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all duration-300"
+                          style={{ width: `${Math.min(100, (questionCount / textCapacity.max) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-foreground/60 w-10 text-right">
+                        {Math.round((questionCount / textCapacity.max) * 100)}%
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 제한 이유 표시 */}
+                  {textCapacity && questionCount >= textCapacity.max && textCapacity.max < 20 && (
+                    <p className="mt-2 text-xs text-amber-500">
+                      {textCapacity.reason}
+                    </p>
+                  )}
                 </div>
 
                 {/* 난이도 */}

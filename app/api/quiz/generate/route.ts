@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateQuizWithFallback, validateQuiz } from '@/lib/ai/generate';
+import { generateQuiz, validateQuiz } from '@/lib/ai/generate';
+import {
+  generateQuestionPool,
+  createQuizFromPool,
+  calculateQuestionCapacity,
+} from '@/lib/quiz';
 import {
   CONTENT_LENGTH,
   QUESTION_COUNT,
   ERROR_MESSAGES,
   type Difficulty,
 } from '@/lib/constants';
-import type { QuizGenerationOptions } from '@/types';
 
 /**
  * POST /api/quiz/generate
@@ -17,7 +21,7 @@ export async function POST(req: NextRequest) {
   try {
     // 요청 본문 파싱
     const body = await req.json();
-    const { content, questionCount = 5, difficulty = 'medium' } = body;
+    const { content, questionCount = 5, difficulty = 'medium', bypassCache = false } = body;
 
     // 입력 검증
     if (!content || typeof content !== 'string') {
@@ -50,15 +54,62 @@ export async function POST(req: NextRequest) {
     }
 
     // 퀴즈 생성 옵션
-    const options: QuizGenerationOptions = {
+    const options = {
       questionCount,
       difficulty: difficulty as Difficulty,
+      bypassCache: Boolean(bypassCache),
     };
 
     console.log('[API] Generating quiz...', { contentLength: content.length, options });
 
-    // AI로 퀴즈 생성 (멀티 모델 폴백)
-    const result = await generateQuizWithFallback(content, options);
+    // 텍스트 용량 확인
+    const capacity = calculateQuestionCapacity(content);
+
+    // 문제 수가 10개 초과이거나 용량의 80% 이상 요청 시 문제 풀 시스템 사용
+    const usePoolSystem = questionCount > 10 || questionCount >= capacity.max * 0.8;
+
+    if (usePoolSystem) {
+      console.log('[API] Using question pool system for', questionCount, 'questions');
+
+      // 문제 풀 시스템 사용
+      const poolResult = await generateQuestionPool(content, options, {
+        targetCount: questionCount,
+        aiRatio: 0.7,
+        transformRatio: 0.3,
+      });
+
+      const quiz = createQuizFromPool(poolResult, '생성된 퀴즈');
+
+      // 퀴즈 유효성 검증
+      const validation = validateQuiz(quiz);
+      if (!validation.valid) {
+        console.error('[API] Invalid quiz generated:', validation.errors);
+        return NextResponse.json(
+          { error: ERROR_MESSAGES.QUIZ_GENERATION_ERROR, details: validation.errors },
+          { status: 500 }
+        );
+      }
+
+      console.log('[API] Quiz generated via pool system', {
+        quizId: quiz.id,
+        questionCount: quiz.questions.length,
+        aiGenerated: poolResult.metadata.aiGenerated,
+        transformed: poolResult.metadata.transformed,
+      });
+
+      return NextResponse.json({
+        success: true,
+        quiz,
+        model: 'pool-system',
+        tokensUsed: poolResult.metadata.tokensUsed,
+        // 문제 풀 메타데이터
+        poolMetadata: poolResult.metadata,
+        capacity,
+      });
+    }
+
+    // 기존 하이브리드 퀴즈 생성 (NLP 전처리 + 캐싱 + AI 폴백)
+    const result = await generateQuiz(content, options);
 
     // 퀴즈 유효성 검증
     const validation = validateQuiz(result.quiz);
@@ -74,6 +125,8 @@ export async function POST(req: NextRequest) {
       quizId: result.quiz.id,
       model: result.model,
       questionCount: result.quiz.questions.length,
+      cached: result.cached,
+      preprocessed: result.preprocessed,
     });
 
     // 성공 응답
@@ -82,6 +135,12 @@ export async function POST(req: NextRequest) {
       quiz: result.quiz,
       model: result.model,
       tokensUsed: result.tokensUsed,
+      // 하이브리드 시스템 메타데이터
+      cached: result.cached,
+      preprocessed: result.preprocessed,
+      originalLength: result.originalLength,
+      processedLength: result.processedLength,
+      capacity,
     });
   } catch (error) {
     console.error('[API] Error generating quiz:', error);

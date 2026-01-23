@@ -106,3 +106,69 @@ export interface AIError {
   message: string;
   modelAttempted: string;
 }
+
+// ============================================
+// Phase 3: 문제 풀 생성 관련 타입
+// ============================================
+
+/**
+ * 문제 변형 유형
+ */
+export type TransformationType =
+  | 'swap_answer' // 정답↔오답 교환 (MCQ)
+  | 'shift_blank' // 빈칸 위치 변경 (Fill)
+  | 'negate' // 부정형 변환 (OX)
+  | 'shuffle_options' // 보기 순서 변경
+  | 'mcq_to_ox'; // 객관식 → OX 변환
+
+/**
+ * 문제 생성 메타데이터
+ */
+export interface QuestionGenerationMetadata {
+  source: 'ai' | 'transformed';
+  transformType?: TransformationType;
+  originalQuestionId?: string;
+  batchIndex?: number;
+}
+
+/**
+ * 확장된 Question 타입 (메타데이터 포함)
+ */
+export interface QuestionExtended extends Question {
+  metadata?: QuestionGenerationMetadata;
+}
+
+/**
+ * 문제 변형 옵션
+ */
+export interface TransformationOptions {
+  enableSwapAnswers: boolean;
+  enableBlankShift: boolean;
+  enableNegation: boolean;
+  enableOptionShuffle: boolean;
+  enableTypeConversion: boolean;
+}
+
+/**
+ * 배치 생성 설정
+ */
+export interface BatchGenerationConfig {
+  targetQuestionCount: number;
+  maxBatches: number;
+  questionsPerBatch: number;
+  overproductionRatio: number;
+}
+
+/**
+ * 문제 풀 생성 결과
+ */
+export interface QuestionPoolResult {
+  questions: Question[];
+  metadata: {
+    aiGenerated: number;
+    transformed: number;
+    totalAttempted: number;
+    tokensUsed: number;
+    generationTimeMs: number;
+  };
+}
