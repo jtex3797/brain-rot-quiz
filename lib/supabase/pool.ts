@@ -6,6 +6,7 @@
 
 import { createClient } from './server';
 import { hashContent } from '@/lib/cache/quizCache';
+import { logger } from '@/lib/utils/logger';
 import type { Question } from '@/types';
 import type {
   DbQuizPool,
@@ -90,12 +91,24 @@ export async function getPoolByHash(
       .gt('expires_at', new Date().toISOString())
       .single();
 
-    if (error || !data) {
+    if (error) {
+      // PGRST116: 행이 없는 경우는 정상적인 캐시 미스
+      if (error.code !== 'PGRST116') {
+        logger.warn('Supabase', '풀 조회 실패', {
+          error: error.message,
+          code: error.code,
+          contentHash: contentHash.slice(0, 8) + '...',
+        });
+      }
       return null;
     }
 
     return data as DbQuizPool;
-  } catch {
+  } catch (e) {
+    logger.error('Supabase', '풀 조회 중 예외 발생', {
+      error: e instanceof Error ? e.message : String(e),
+      contentHash: contentHash.slice(0, 8) + '...',
+    });
     return null;
   }
 }
@@ -136,17 +149,32 @@ export async function getOrCreatePool(
       .single();
 
     if (error) {
+      logger.warn('Supabase', '풀 upsert 실패, 재조회 시도', {
+        error: error.message,
+        code: error.code,
+      });
       // upsert 실패 시 다시 조회 시도 (다른 요청이 먼저 생성했을 수 있음)
       const retryPool = await getPoolByHash(contentHash);
       if (retryPool) {
         return { success: true, pool: retryPool };
       }
+      logger.error('Supabase', '풀 생성 최종 실패', {
+        error: error.message,
+        code: error.code,
+        details: error.details,
+      });
       return { success: false, error: error.message };
     }
 
+    logger.debug('Supabase', '새 풀 생성됨', {
+      poolId: data?.id,
+      maxCapacity,
+    });
     return { success: true, pool: data as DbQuizPool };
   } catch (e) {
-    return { success: false, error: String(e) };
+    const errorMsg = e instanceof Error ? e.message : String(e);
+    logger.error('Supabase', '풀 생성 중 예외 발생', { error: errorMsg });
+    return { success: false, error: errorMsg };
   }
 }
 
@@ -177,30 +205,60 @@ export async function saveQuestionsToPool(
       .select();
 
     if (error) {
+      logger.error('Supabase', '풀 문제 저장 실패', {
+        error: error.message,
+        code: error.code,
+        details: error.details,
+        poolId,
+        questionCount: questions.length,
+      });
       return { success: false, savedCount: 0, error: error.message };
     }
 
     // generated_count 누적 증가 (RPC 또는 raw SQL로 처리)
-    const { data: poolData } = await (supabase as any)
+    const { data: poolData, error: poolError } = await (supabase as any)
       .from('quiz_pools')
       .select('generated_count')
       .eq('id', poolId)
       .single();
 
+    if (poolError) {
+      logger.warn('Supabase', '풀 카운트 조회 실패', {
+        error: poolError.message,
+        poolId,
+      });
+    }
+
     const currentCount = poolData?.generated_count ?? 0;
-    await (supabase as any)
+    const { error: updateError } = await (supabase as any)
       .from('quiz_pools')
       .update({ generated_count: currentCount + questions.length })
       .eq('id', poolId);
+
+    if (updateError) {
+      logger.warn('Supabase', '풀 카운트 업데이트 실패', {
+        error: updateError.message,
+        poolId,
+      });
+    }
 
     // DB ID가 포함된 문제들 반환
     const savedQuestions = data
       ? (data as DbPoolQuestion[]).map(fromDbPoolQuestion)
       : undefined;
 
+    logger.debug('Supabase', '풀 문제 저장 완료', {
+      poolId,
+      savedCount: questions.length,
+    });
     return { success: true, savedCount: questions.length, savedQuestions };
   } catch (e) {
-    return { success: false, savedCount: 0, error: String(e) };
+    const errorMsg = e instanceof Error ? e.message : String(e);
+    logger.error('Supabase', '풀 문제 저장 중 예외 발생', {
+      error: errorMsg,
+      poolId,
+    });
+    return { success: false, savedCount: 0, error: errorMsg };
   }
 }
 
@@ -235,7 +293,15 @@ export async function fetchQuestionsFromPool(
     if (random) {
       // Supabase는 RANDOM() 직접 지원 안 함 - 전체 조회 후 셔플
       const { data, error } = await query;
-      if (error || !data) {
+      if (error) {
+        logger.error('Supabase', '풀 문제 랜덤 조회 실패', {
+          error: error.message,
+          code: error.code,
+          poolId,
+        });
+        return { questions: [], remainingCount: 0 };
+      }
+      if (!data) {
         return { questions: [], remainingCount: 0 };
       }
 
@@ -252,22 +318,42 @@ export async function fetchQuestionsFromPool(
     // 순차 조회
     const { data, error } = await query.order('created_at').limit(count);
 
-    if (error || !data) {
+    if (error) {
+      logger.error('Supabase', '풀 문제 순차 조회 실패', {
+        error: error.message,
+        code: error.code,
+        poolId,
+        count,
+      });
+      return { questions: [], remainingCount: 0 };
+    }
+    if (!data) {
       return { questions: [], remainingCount: 0 };
     }
 
     // 남은 문제 수 계산
-    const { count: totalCount } = await (supabase as any)
+    const { count: totalCount, error: countError } = await (supabase as any)
       .from('pool_questions')
       .select('*', { count: 'exact', head: true })
       .eq('pool_id', poolId)
       .not('id', 'in', `(${[...excludeIds, ...(data as DbPoolQuestion[]).map((d) => d.id)].join(',')})`);
 
+    if (countError) {
+      logger.warn('Supabase', '남은 문제 수 계산 실패', {
+        error: countError.message,
+        poolId,
+      });
+    }
+
     return {
       questions: (data as DbPoolQuestion[]).map(fromDbPoolQuestion),
       remainingCount: totalCount ?? 0,
     };
-  } catch {
+  } catch (e) {
+    logger.error('Supabase', '풀 문제 조회 중 예외 발생', {
+      error: e instanceof Error ? e.message : String(e),
+      poolId,
+    });
     return { questions: [], remainingCount: 0 };
   }
 }
@@ -284,9 +370,20 @@ export async function getPoolQuestionCount(poolId: string): Promise<number> {
       .select('*', { count: 'exact', head: true })
       .eq('pool_id', poolId);
 
-    if (error) return 0;
+    if (error) {
+      logger.warn('Supabase', '풀 문제 수 조회 실패', {
+        error: error.message,
+        code: error.code,
+        poolId,
+      });
+      return 0;
+    }
     return count ?? 0;
-  } catch {
+  } catch (e) {
+    logger.error('Supabase', '풀 문제 수 조회 중 예외 발생', {
+      error: e instanceof Error ? e.message : String(e),
+      poolId,
+    });
     return 0;
   }
 }
@@ -297,9 +394,22 @@ export async function getPoolQuestionCount(poolId: string): Promise<number> {
 export async function cleanupExpiredPools(): Promise<number> {
   try {
     const supabase = await createClient();
-    const { data } = await supabase.rpc('cleanup_expired_pools');
+    const { data, error } = await supabase.rpc('cleanup_expired_pools');
+
+    if (error) {
+      logger.error('Supabase', '만료된 풀 정리 RPC 실패', {
+        error: error.message,
+        code: error.code,
+      });
+      return 0;
+    }
+
+    logger.info('Supabase', '만료된 풀 정리 완료', { cleanedCount: data ?? 0 });
     return data ?? 0;
-  } catch {
+  } catch (e) {
+    logger.error('Supabase', '만료된 풀 정리 중 예외 발생', {
+      error: e instanceof Error ? e.message : String(e),
+    });
     return 0;
   }
 }

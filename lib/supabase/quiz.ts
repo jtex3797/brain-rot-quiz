@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from './client';
+import { logger } from '@/lib/utils/logger';
 import type { Quiz, Question } from '@/types';
 import type {
   DbQuiz,
@@ -101,7 +102,13 @@ export async function saveQuizToDb(
     .insert(quizData);
 
   if (quizError) {
-    console.error('퀴즈 저장 실패:', quizError);
+    logger.error('Supabase', '퀴즈 저장 실패', {
+      error: quizError.message,
+      code: quizError.code,
+      details: quizError.details,
+      quizId: quiz.id,
+      userId,
+    });
     return { success: false, error: quizError.message };
   }
 
@@ -112,7 +119,13 @@ export async function saveQuizToDb(
     .insert(questionsData);
 
   if (questionsError) {
-    console.error('문제 저장 실패:', questionsError);
+    logger.error('Supabase', '문제 저장 실패, 롤백 실행', {
+      error: questionsError.message,
+      code: questionsError.code,
+      details: questionsError.details,
+      quizId: quiz.id,
+      questionCount: questionsData.length,
+    });
     // 롤백: 퀴즈 삭제
     await supabase.from('quizzes').delete().eq('id', quiz.id);
     return { success: false, error: questionsError.message };
@@ -143,12 +156,11 @@ async function withTimeout<T>(
 
 // 퀴즈 조회 (ID)
 export async function getQuizFromDb(quizId: string): Promise<Quiz | null> {
-  console.log('[getQuizFromDb] Starting...', { quizId });
+  logger.debug('Supabase', '퀴즈 조회 시작', { quizId });
 
   try {
     const supabase = createClient() as any;
 
-    console.log('[getQuizFromDb] Fetching quiz...');
     const quizResult = await withTimeout(
       () => supabase
         .from('quizzes')
@@ -159,10 +171,20 @@ export async function getQuizFromDb(quizId: string): Promise<Quiz | null> {
     ) as { data: DbQuiz | null; error: any };
 
     const { data: dbQuiz, error: quizError } = quizResult;
-    console.log('[getQuizFromDb] Quiz result:', { found: !!dbQuiz, error: quizError?.message });
-    if (quizError || !dbQuiz) return null;
 
-    console.log('[getQuizFromDb] Fetching questions...');
+    if (quizError) {
+      logger.error('Supabase', '퀴즈 조회 실패', {
+        error: quizError.message,
+        code: quizError.code,
+        quizId,
+      });
+      return null;
+    }
+    if (!dbQuiz) {
+      logger.debug('Supabase', '퀴즈를 찾을 수 없음', { quizId });
+      return null;
+    }
+
     const questionsResult = await withTimeout(
       () => supabase
         .from('questions')
@@ -173,14 +195,21 @@ export async function getQuizFromDb(quizId: string): Promise<Quiz | null> {
     ) as { data: DbQuestion[] | null; error: any };
 
     const { data: dbQuestions, error: questionsError } = questionsResult;
-    console.log('[getQuizFromDb] Questions result:', { count: dbQuestions?.length, error: questionsError?.message });
-    if (questionsError || !dbQuestions) return null;
+
+    if (questionsError) {
+      logger.error('Supabase', '퀴즈 문제 조회 실패', {
+        error: questionsError.message,
+        code: questionsError.code,
+        quizId,
+      });
+      return null;
+    }
+    if (!dbQuestions) return null;
 
     const quiz = fromDbQuiz(dbQuiz, dbQuestions);
 
     // pool_id가 있으면 남은 문제 수 조회
     if (dbQuiz.pool_id) {
-      console.log('[getQuizFromDb] Fetching pool count...');
       const countResult = await withTimeout(
         () => supabase
           .from('pool_questions')
@@ -192,13 +221,23 @@ export async function getQuizFromDb(quizId: string): Promise<Quiz | null> {
       const { count } = countResult;
       // 현재 퀴즈에 포함된 문제 수 제외 (단순화된 방식)
       quiz.remainingCount = Math.max(0, (count ?? 0) - quiz.questions.length);
-      console.log('[getQuizFromDb] Pool count:', { count, remainingCount: quiz.remainingCount });
+      logger.debug('Supabase', '풀 문제 수 조회 완료', {
+        poolId: dbQuiz.pool_id,
+        totalCount: count,
+        remainingCount: quiz.remainingCount,
+      });
     }
 
-    console.log('[getQuizFromDb] Done, returning quiz');
+    logger.debug('Supabase', '퀴즈 조회 완료', {
+      quizId,
+      questionCount: quiz.questions.length,
+    });
     return quiz;
   } catch (error) {
-    console.error('[getQuizFromDb] Error:', error);
+    logger.error('Supabase', '퀴즈 조회 중 예외 발생', {
+      error: error instanceof Error ? error.message : String(error),
+      quizId,
+    });
     return null;
   }
 }
@@ -213,7 +252,14 @@ export async function getMyQuizzes(userId: string): Promise<DbQuiz[]> {
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
-  if (error) return [];
+  if (error) {
+    logger.error('Supabase', '내 퀴즈 목록 조회 실패', {
+      error: error.message,
+      code: error.code,
+      userId,
+    });
+    return [];
+  }
   return (data as DbQuiz[]) ?? [];
 }
 
@@ -223,31 +269,57 @@ export async function getQuizByShareCode(
 ): Promise<Quiz | null> {
   const supabase = createClient() as any;
 
-  const { data: dbQuiz } = await supabase
+  const { data: dbQuiz, error: quizError } = await supabase
     .from('quizzes')
     .select('*')
     .eq('share_code', shareCode)
     .eq('is_public', true)
     .single();
 
+  if (quizError) {
+    // PGRST116: 행이 없는 경우는 정상 (잘못된 공유 코드)
+    if (quizError.code !== 'PGRST116') {
+      logger.error('Supabase', '공유 코드로 퀴즈 조회 실패', {
+        error: quizError.message,
+        code: quizError.code,
+        shareCode,
+      });
+    }
+    return null;
+  }
   if (!dbQuiz) return null;
 
-  const { data: dbQuestions } = await supabase
+  const { data: dbQuestions, error: questionsError } = await supabase
     .from('questions')
     .select('*')
     .eq('quiz_id', dbQuiz.id)
     .order('order_index');
 
+  if (questionsError) {
+    logger.error('Supabase', '공유 퀴즈 문제 조회 실패', {
+      error: questionsError.message,
+      code: questionsError.code,
+      quizId: dbQuiz.id,
+    });
+    return null;
+  }
   if (!dbQuestions) return null;
 
   const quiz = fromDbQuiz(dbQuiz as DbQuiz, dbQuestions as DbQuestion[]);
 
   // pool_id가 있으면 남은 문제 수 조회
   if (dbQuiz.pool_id) {
-    const { count } = await supabase
+    const { count, error: countError } = await supabase
       .from('pool_questions')
       .select('*', { count: 'exact', head: true })
       .eq('pool_id', dbQuiz.pool_id);
+
+    if (countError) {
+      logger.warn('Supabase', '공유 퀴즈 풀 문제 수 조회 실패', {
+        error: countError.message,
+        poolId: dbQuiz.pool_id,
+      });
+    }
 
     quiz.remainingCount = Math.max(0, (count ?? 0) - quiz.questions.length);
   }
@@ -269,8 +341,16 @@ export async function deleteQuizFromDb(
     .eq('user_id', userId);
 
   if (error) {
+    logger.error('Supabase', '퀴즈 삭제 실패', {
+      error: error.message,
+      code: error.code,
+      details: error.details,
+      quizId,
+      userId,
+    });
     return { success: false, error: error.message };
   }
 
+  logger.info('Supabase', '퀴즈 삭제 완료', { quizId });
   return { success: true };
 }

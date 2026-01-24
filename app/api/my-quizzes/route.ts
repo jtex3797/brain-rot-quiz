@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * GET /api/my-quizzes
@@ -29,7 +30,11 @@ export async function GET() {
             .order('created_at', { ascending: false });
 
         if (queryError) {
-            console.error('[API] 퀴즈 목록 조회 실패:', queryError);
+            logger.error('API', '퀴즈 목록 조회 실패', {
+                error: queryError.message,
+                code: queryError.code,
+                userId: user.id,
+            });
             return NextResponse.json(
                 { quizzes: [], error: queryError.message },
                 { status: 500 }
@@ -38,7 +43,9 @@ export async function GET() {
 
         return NextResponse.json({ quizzes: quizzes ?? [] });
     } catch (error) {
-        console.error('[API] 퀴즈 목록 조회 중 예외:', error);
+        logger.error('API', '퀴즈 목록 조회 중 예외', {
+            error: error instanceof Error ? error.message : String(error),
+        });
         return NextResponse.json(
             { quizzes: [], error: '퀴즈 목록을 불러오는데 실패했습니다' },
             { status: 500 }
@@ -89,7 +96,9 @@ export async function DELETE(req: Request) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('[API] 퀴즈 삭제 중 예외:', error);
+        logger.error('API', '퀴즈 삭제 중 예외', {
+            error: error instanceof Error ? error.message : String(error),
+        });
         return NextResponse.json(
             { success: false, error: '퀴즈 삭제에 실패했습니다' },
             { status: 500 }

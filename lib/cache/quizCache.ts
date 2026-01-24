@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/utils/logger';
 import type { Quiz, QuizGenerationOptions } from '@/types';
 
 // =====================================================
@@ -83,13 +84,24 @@ export async function getCachedQuiz(
       .gt('expires_at', new Date().toISOString())
       .single();
 
-    if (error || !data) {
+    if (error) {
+      // PGRST116: 행이 없는 경우는 정상적인 캐시 미스
+      if (error.code !== 'PGRST116') {
+        logger.warn('Cache', '캐시 조회 실패', {
+          error: error.message,
+          code: error.code,
+          contentHash: contentHash.slice(0, 8) + '...',
+        });
+      }
+      return null;
+    }
+    if (!data) {
       return null;
     }
 
     // hit_count 증가 및 last_accessed_at 업데이트
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
+    const { error: updateError } = await (supabase as any)
       .from('quiz_cache')
       .update({
         hit_count: data.hit_count + 1,
@@ -98,8 +110,18 @@ export async function getCachedQuiz(
       .eq('content_hash', contentHash)
       .eq('options_hash', optionsHash);
 
+    if (updateError) {
+      logger.warn('Cache', '캐시 hit_count 업데이트 실패', {
+        error: updateError.message,
+      });
+    }
+
+    logger.logCache(true, contentHash);
     return data.quiz_data as CachedQuizData;
-  } catch {
+  } catch (e) {
+    logger.error('Cache', '캐시 조회 중 예외 발생', {
+      error: e instanceof Error ? e.message : String(e),
+    });
     // 캐시 조회 실패 시 null 반환 (AI 생성으로 폴백)
     return null;
   }
@@ -117,7 +139,7 @@ export async function setCachedQuiz(
     const supabase = await createClient();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('quiz_cache').upsert(
+    const { error } = await (supabase as any).from('quiz_cache').upsert(
       {
         content_hash: contentHash,
         options_hash: optionsHash,
@@ -130,7 +152,22 @@ export async function setCachedQuiz(
         onConflict: 'content_hash,options_hash',
       }
     );
-  } catch {
+
+    if (error) {
+      logger.warn('Cache', '캐시 저장 실패', {
+        error: error.message,
+        code: error.code,
+        contentHash: contentHash.slice(0, 8) + '...',
+      });
+    } else {
+      logger.debug('Cache', '캐시 저장 완료', {
+        contentHash: contentHash.slice(0, 8) + '...',
+      });
+    }
+  } catch (e) {
+    logger.error('Cache', '캐시 저장 중 예외 발생', {
+      error: e instanceof Error ? e.message : String(e),
+    });
     // 캐시 저장 실패는 무시 (다음에 다시 생성)
   }
 }
@@ -142,9 +179,22 @@ export async function cleanupExpiredCache(): Promise<number> {
   try {
     const supabase = await createClient();
 
-    const { data } = await supabase.rpc('cleanup_expired_cache');
+    const { data, error } = await supabase.rpc('cleanup_expired_cache');
+
+    if (error) {
+      logger.error('Cache', '만료된 캐시 정리 RPC 실패', {
+        error: error.message,
+        code: error.code,
+      });
+      return 0;
+    }
+
+    logger.info('Cache', '만료된 캐시 정리 완료', { cleanedCount: data ?? 0 });
     return data ?? 0;
-  } catch {
+  } catch (e) {
+    logger.error('Cache', '만료된 캐시 정리 중 예외 발생', {
+      error: e instanceof Error ? e.message : String(e),
+    });
     return 0;
   }
 }

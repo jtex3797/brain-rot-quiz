@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from './client';
+import { logger } from '@/lib/utils/logger';
 import type { UserAnswer } from '@/types';
 import type { QuizSessionInsert, SessionAnswerInsert } from '@/types/supabase';
 
@@ -88,7 +89,13 @@ export async function completeQuizSession(
     .single();
 
   if (sessionError || !session) {
-    console.error('세션 저장 실패:', sessionError);
+    logger.error('Supabase', '세션 저장 실패', {
+      error: sessionError?.message,
+      code: sessionError?.code,
+      details: sessionError?.details,
+      userId,
+      quizId,
+    });
     return {
       sessionId: '',
       xpEarned,
@@ -115,7 +122,13 @@ export async function completeQuizSession(
         .insert(answersData);
 
       if (answersError) {
-        console.error('답변 저장 실패:', answersError.message, answersError.details, answersError.code);
+        logger.error('Supabase', '답변 저장 실패', {
+          error: answersError.message,
+          code: answersError.code,
+          details: answersError.details,
+          sessionId: session.id,
+          answerCount: answersData.length,
+        });
       }
     }
   }
@@ -127,8 +140,16 @@ export async function completeQuizSession(
     xp_amount: xpEarned,
   });
 
-  if (!xpError && xpData && xpData.length > 0) {
+  if (xpError) {
+    logger.error('Supabase', 'XP 추가 RPC 실패', {
+      error: xpError.message,
+      code: xpError.code,
+      userId,
+      xpEarned,
+    });
+  } else if (xpData && xpData.length > 0) {
     xpResult = xpData[0];
+    logger.debug('Supabase', 'XP 추가 성공', { xpResult });
   }
 
   // 4. 스트릭 업데이트
@@ -140,17 +161,34 @@ export async function completeQuizSession(
     }
   );
 
-  if (!streakError && streakData && streakData.length > 0) {
+  if (streakError) {
+    logger.error('Supabase', '스트릭 업데이트 RPC 실패', {
+      error: streakError.message,
+      code: streakError.code,
+      userId,
+    });
+  } else if (streakData && streakData.length > 0) {
     streakResult = streakData[0];
+    logger.debug('Supabase', '스트릭 업데이트 성공', { streakResult });
   }
 
   // 5. 프로필 통계 업데이트
-  await supabase.rpc('increment_profile_stats', {
+  const { error: statsError } = await supabase.rpc('increment_profile_stats', {
     p_user_id: userId,
     p_quizzes_played: 1,
     p_questions_answered: totalQuestions,
     p_correct_answers: correctCount,
   });
+
+  if (statsError) {
+    logger.error('Supabase', '프로필 통계 업데이트 RPC 실패', {
+      error: statsError.message,
+      code: statsError.code,
+      userId,
+      totalQuestions,
+      correctCount,
+    });
+  }
 
   return {
     sessionId: session.id,
@@ -203,7 +241,16 @@ export async function getMySessionHistory(
     .order('completed_at', { ascending: false })
     .limit(limit);
 
-  if (error || !data) return [];
+  if (error) {
+    logger.error('Supabase', '세션 기록 조회 실패', {
+      error: error.message,
+      code: error.code,
+      userId,
+      limit,
+    });
+    return [];
+  }
+  if (!data) return [];
 
   return data.map((session: any) => ({
     id: session.id,
