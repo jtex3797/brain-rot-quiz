@@ -16,7 +16,7 @@ type PageState = 'loading' | 'error' | 'ready';
 
 export default function QuizPage() {
     const params = useParams<{ id: string }>();
-    const { user } = useAuth();
+    const { user, isLoading: isAuthLoading } = useAuth();
     const [quiz, setQuiz] = useState<Quiz | null>(null);
     const [isDbQuiz, setIsDbQuiz] = useState(false);
     const [pageState, setPageState] = useState<PageState>('loading');
@@ -25,6 +25,11 @@ export default function QuizPage() {
     const [answeredQuestionIds, setAnsweredQuestionIds] = useState<string[]>([]);
 
     useEffect(() => {
+        // 인증 로딩 중이면 대기
+        if (isAuthLoading) return;
+
+        let cancelled = false;
+
         const loadQuiz = async () => {
             try {
                 const quizId = params.id;
@@ -40,6 +45,7 @@ export default function QuizPage() {
                 if (user) {
                     console.log('[QuizPage] User logged in, trying DB...');
                     const dbQuiz = await getQuizFromDb(quizId);
+                    if (cancelled) return; // 취소된 경우 상태 업데이트 방지
                     console.log('[QuizPage] DB result:', dbQuiz ? 'found' : 'not found');
                     if (dbQuiz) {
                         setQuiz(dbQuiz);
@@ -54,6 +60,7 @@ export default function QuizPage() {
                 // DB에 없으면 로컬 스토리지에서 로드
                 console.log('[QuizPage] Trying localStorage...');
                 const loadedQuiz = getQuizFromLocal(quizId);
+                if (cancelled) return;
                 console.log('[QuizPage] localStorage result:', loadedQuiz ? 'found' : 'not found');
 
                 if (!loadedQuiz) {
@@ -68,13 +75,18 @@ export default function QuizPage() {
                 setPageState('ready');
                 console.log('[QuizPage] Quiz loaded from localStorage, ready');
             } catch (error) {
+                if (cancelled) return;
                 console.error('[QuizPage] Quiz loading failed:', error);
                 setPageState('error');
             }
         };
 
         loadQuiz();
-    }, [params.id, user]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [params.id, user?.id, isAuthLoading]);
 
     // 더 풀기 핸들러
     const handleLoadMore = useCallback(async () => {

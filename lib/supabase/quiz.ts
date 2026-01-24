@@ -121,48 +121,86 @@ export async function saveQuizToDb(
   return { success: true };
 }
 
+// 타임아웃 헬퍼
+async function withTimeout<T>(
+  promiseFactory: () => PromiseLike<T>,
+  ms: number
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`Query timeout after ${ms}ms`)), ms);
+  });
+
+  try {
+    const result = await Promise.race([promiseFactory(), timeoutPromise]);
+    clearTimeout(timeoutId!);
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId!);
+    throw error;
+  }
+}
+
 // 퀴즈 조회 (ID)
 export async function getQuizFromDb(quizId: string): Promise<Quiz | null> {
   console.log('[getQuizFromDb] Starting...', { quizId });
-  const supabase = createClient() as any;
 
-  console.log('[getQuizFromDb] Fetching quiz...');
-  const { data: dbQuiz, error: quizError } = await supabase
-    .from('quizzes')
-    .select('*')
-    .eq('id', quizId)
-    .single();
+  try {
+    const supabase = createClient() as any;
 
-  console.log('[getQuizFromDb] Quiz result:', { found: !!dbQuiz, error: quizError?.message });
-  if (quizError || !dbQuiz) return null;
+    console.log('[getQuizFromDb] Fetching quiz...');
+    const quizResult = await withTimeout(
+      () => supabase
+        .from('quizzes')
+        .select('*')
+        .eq('id', quizId)
+        .maybeSingle(),  // single() → maybeSingle()로 변경: row가 없어도 에러 발생 안함
+      10000  // 10초 타임아웃
+    ) as { data: DbQuiz | null; error: any };
 
-  console.log('[getQuizFromDb] Fetching questions...');
-  const { data: dbQuestions, error: questionsError } = await supabase
-    .from('questions')
-    .select('*')
-    .eq('quiz_id', dbQuiz.id)
-    .order('order_index');
+    const { data: dbQuiz, error: quizError } = quizResult;
+    console.log('[getQuizFromDb] Quiz result:', { found: !!dbQuiz, error: quizError?.message });
+    if (quizError || !dbQuiz) return null;
 
-  console.log('[getQuizFromDb] Questions result:', { count: dbQuestions?.length, error: questionsError?.message });
-  if (questionsError || !dbQuestions) return null;
+    console.log('[getQuizFromDb] Fetching questions...');
+    const questionsResult = await withTimeout(
+      () => supabase
+        .from('questions')
+        .select('*')
+        .eq('quiz_id', dbQuiz.id)
+        .order('order_index'),
+      10000
+    ) as { data: DbQuestion[] | null; error: any };
 
-  const quiz = fromDbQuiz(dbQuiz as DbQuiz, dbQuestions as DbQuestion[]);
+    const { data: dbQuestions, error: questionsError } = questionsResult;
+    console.log('[getQuizFromDb] Questions result:', { count: dbQuestions?.length, error: questionsError?.message });
+    if (questionsError || !dbQuestions) return null;
 
-  // pool_id가 있으면 남은 문제 수 조회
-  if (dbQuiz.pool_id) {
-    console.log('[getQuizFromDb] Fetching pool count...');
-    const { count } = await supabase
-      .from('pool_questions')
-      .select('*', { count: 'exact', head: true })
-      .eq('pool_id', dbQuiz.pool_id);
+    const quiz = fromDbQuiz(dbQuiz, dbQuestions);
 
-    // 현재 퀴즈에 포함된 문제 수 제외 (단순화된 방식)
-    quiz.remainingCount = Math.max(0, (count ?? 0) - quiz.questions.length);
-    console.log('[getQuizFromDb] Pool count:', { count, remainingCount: quiz.remainingCount });
+    // pool_id가 있으면 남은 문제 수 조회
+    if (dbQuiz.pool_id) {
+      console.log('[getQuizFromDb] Fetching pool count...');
+      const countResult = await withTimeout(
+        () => supabase
+          .from('pool_questions')
+          .select('*', { count: 'exact', head: true })
+          .eq('pool_id', dbQuiz.pool_id),
+        5000  // 5초 타임아웃
+      ) as { count: number | null };
+
+      const { count } = countResult;
+      // 현재 퀴즈에 포함된 문제 수 제외 (단순화된 방식)
+      quiz.remainingCount = Math.max(0, (count ?? 0) - quiz.questions.length);
+      console.log('[getQuizFromDb] Pool count:', { count, remainingCount: quiz.remainingCount });
+    }
+
+    console.log('[getQuizFromDb] Done, returning quiz');
+    return quiz;
+  } catch (error) {
+    console.error('[getQuizFromDb] Error:', error);
+    return null;
   }
-
-  console.log('[getQuizFromDb] Done, returning quiz');
-  return quiz;
 }
 
 // 내 퀴즈 목록 조회

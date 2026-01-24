@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateQuiz, validateQuiz } from '@/lib/ai/generate';
+import { generateQuiz, validateQuiz, normalizeQuiz } from '@/lib/ai/generate';
 import {
   generateQuestionPool,
   createQuizFromPool,
@@ -128,12 +128,14 @@ export async function POST(req: NextRequest) {
       });
 
       startStep('퀴즈 객체 생성');
-      const quiz = {
+      const rawQuiz = {
         id: crypto.randomUUID(),
         title: '생성된 퀴즈',
         questions: poolResult.questions,
         createdAt: new Date(),
       };
+      // OX 문제 등 정규화
+      const quiz = normalizeQuiz(rawQuiz);
       endStep();
 
       // 퀴즈 유효성 검증
@@ -185,7 +187,9 @@ export async function POST(req: NextRequest) {
       });
 
       startStep('퀴즈 객체 생성');
-      const quiz = createQuizFromPool(poolResult, '생성된 퀴즈');
+      const rawQuiz = createQuizFromPool(poolResult, '생성된 퀴즈');
+      // OX 문제 등 정규화
+      const quiz = normalizeQuiz(rawQuiz);
       endStep();
 
       // 퀴즈 유효성 검증
@@ -222,6 +226,8 @@ export async function POST(req: NextRequest) {
     // 기존 하이브리드 퀴즈 생성 (NLP 전처리 + 캐싱 + AI 폴백)
     startStep('하이브리드 퀴즈 생성');
     const result = await generateQuiz(content, options);
+    // OX 문제 등 정규화
+    result.quiz = normalizeQuiz(result.quiz);
     endStep({
       cached: result.cached,
       preprocessed: result.preprocessed,

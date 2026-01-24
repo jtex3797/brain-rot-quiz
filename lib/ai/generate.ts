@@ -276,6 +276,39 @@ function classifyError(error: unknown, modelName: string): AIError {
 }
 
 /**
+ * 퀴즈 문제 정규화
+ * - OX 문제: options를 ["O", "X"]로 자동 설정
+ * - correctAnswer 정규화: "O"/"X" 또는 "true"/"false" 처리
+ */
+export function normalizeQuiz(quiz: Quiz): Quiz {
+  return {
+    ...quiz,
+    questions: quiz.questions.map((q) => {
+      if (q.type === 'ox') {
+        // OX 문제의 options 강제 설정
+        const normalizedOptions = ['O', 'X'];
+
+        // correctAnswer 정규화 (다양한 형식 처리)
+        let normalizedAnswer = q.correctAnswer;
+        const answerLower = q.correctAnswer.toLowerCase().trim();
+        if (answerLower === 'true' || answerLower === '참' || answerLower === 'o') {
+          normalizedAnswer = 'O';
+        } else if (answerLower === 'false' || answerLower === '거짓' || answerLower === 'x') {
+          normalizedAnswer = 'X';
+        }
+
+        return {
+          ...q,
+          options: normalizedOptions,
+          correctAnswer: normalizedAnswer,
+        };
+      }
+      return q;
+    }),
+  };
+}
+
+/**
  * 퀴즈 유효성 검증
  */
 export function validateQuiz(quiz: Quiz): { valid: boolean; errors: string[] } {

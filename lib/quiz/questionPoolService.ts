@@ -150,18 +150,22 @@ export async function getOrGenerateQuestionPool(
     });
   }
 
+  // DB ID가 포함된 문제 사용 (더 풀기 기능에서 excludeIds 매칭을 위해 필수)
+  const questionsToReturn = saveResult.savedQuestions ?? poolResult.questions;
+
   const elapsedMs = Date.now() - startTime;
   logger.info('Pool', `🎱 풀 생성 완료 (${elapsedMs}ms)`, {
     '풀 ID': pool.id,
     '생성된 문제': poolResult.questions.length,
-    '반환할 문제': Math.min(requestedCount, poolResult.questions.length),
+    '반환할 문제': Math.min(requestedCount, questionsToReturn.length),
+    'DB ID 사용': !!saveResult.savedQuestions,
   });
 
   return {
     poolId: pool.id,
-    questions: poolResult.questions.slice(0, requestedCount),
+    questions: questionsToReturn.slice(0, requestedCount),
     isFromCache: false,
-    remainingCount: Math.max(0, poolResult.questions.length - requestedCount),
+    remainingCount: Math.max(0, questionsToReturn.length - requestedCount),
     metadata: poolResult.metadata,
   };
 }

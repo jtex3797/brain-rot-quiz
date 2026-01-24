@@ -156,12 +156,13 @@ export async function getOrCreatePool(
 
 /**
  * 풀에 문제들 저장
+ * @returns savedQuestions: DB ID가 포함된 저장된 문제들
  */
 export async function saveQuestionsToPool(
   poolId: string,
   questions: Question[],
   sourceType: 'ai' | 'transformed' = 'ai'
-): Promise<{ success: boolean; savedCount: number; error?: string }> {
+): Promise<{ success: boolean; savedCount: number; savedQuestions?: Question[]; error?: string }> {
   try {
     const supabase = await createClient();
 
@@ -169,9 +170,11 @@ export async function saveQuestionsToPool(
       toDbPoolQuestion(q, poolId, sourceType)
     );
 
-    const { error } = await (supabase as any)
+    // insert 후 저장된 데이터를 반환받아 DB ID를 획득
+    const { data, error } = await (supabase as any)
       .from('pool_questions')
-      .insert(insertData);
+      .insert(insertData)
+      .select();
 
     if (error) {
       return { success: false, savedCount: 0, error: error.message };
@@ -190,7 +193,12 @@ export async function saveQuestionsToPool(
       .update({ generated_count: currentCount + questions.length })
       .eq('id', poolId);
 
-    return { success: true, savedCount: questions.length };
+    // DB ID가 포함된 문제들 반환
+    const savedQuestions = data
+      ? (data as DbPoolQuestion[]).map(fromDbPoolQuestion)
+      : undefined;
+
+    return { success: true, savedCount: questions.length, savedQuestions };
   } catch (e) {
     return { success: false, savedCount: 0, error: String(e) };
   }
