@@ -78,12 +78,16 @@ CREATE TABLE IF NOT EXISTS public.quizzes (
   is_public BOOLEAN DEFAULT FALSE NOT NULL,
   share_code TEXT UNIQUE,
 
+  -- Question Pool 시스템 연동
+  pool_id UUID REFERENCES public.quiz_pools(id),
+
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_quizzes_user_id ON public.quizzes(user_id);
 CREATE INDEX IF NOT EXISTS idx_quizzes_share_code ON public.quizzes(share_code);
+CREATE INDEX IF NOT EXISTS idx_quizzes_pool_id ON public.quizzes(pool_id);
 
 ALTER TABLE public.quizzes ENABLE ROW LEVEL SECURITY;
 

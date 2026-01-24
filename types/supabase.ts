@@ -69,6 +69,7 @@ export interface Database {
           question_count: number;
           is_public: boolean;
           share_code: string | null;
+          pool_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -81,6 +82,7 @@ export interface Database {
           question_count: number;
           is_public?: boolean;
           share_code?: string | null;
+          pool_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -93,6 +95,7 @@ export interface Database {
           question_count?: number;
           is_public?: boolean;
           share_code?: string | null;
+          pool_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
