@@ -1,9 +1,10 @@
 /**
  * 한국어 텍스트 토큰화 모듈
- * gimci 라이브러리를 활용한 한국어 형태소 분석
+ * Intl.Segmenter를 활용한 한국어 단어 분리
  */
 
-import { analyze } from 'gimci';
+// 한국어 단어 분리를 위한 Intl.Segmenter
+const koreanSegmenter = new Intl.Segmenter('ko-KR', { granularity: 'word' });
 
 // 한국어 불용어 목록 (조사, 접속사, 대명사 등)
 const KOREAN_STOPWORDS = new Set([
@@ -57,34 +58,15 @@ export function detectLanguage(text: string): 'ko' | 'en' | 'mixed' {
 
 /**
  * 한국어 텍스트를 토큰화
- * gimci를 사용하여 형태소 분석 후 의미있는 토큰만 추출
+ * Intl.Segmenter를 사용하여 단어 분리 후 불용어 제거
  */
 export function tokenizeKorean(text: string): string[] {
-  const analyzed = analyze(text);
-  const tokens: string[] = [];
+  const segments = koreanSegmenter.segment(text);
 
-  for (const item of analyzed) {
-    // 체언(명사류), 용언(동사/형용사) 어간만 추출
-    if (item.morphemes) {
-      for (const morpheme of item.morphemes) {
-        // 명사, 동사, 형용사 어간 등 의미있는 형태소만
-        const pos = morpheme.pos;
-        if (
-          pos.startsWith('N') || // 명사
-          pos.startsWith('V') || // 동사
-          pos.startsWith('M') || // 관형사/부사
-          pos === 'SL' // 외국어
-        ) {
-          const token = morpheme.surface.toLowerCase();
-          if (token.length > 1 && !KOREAN_STOPWORDS.has(token)) {
-            tokens.push(token);
-          }
-        }
-      }
-    }
-  }
-
-  return tokens;
+  return Array.from(segments)
+    .filter((segment) => segment.isWordLike)
+    .map((segment) => segment.segment.toLowerCase())
+    .filter((token) => token.length > 1 && !KOREAN_STOPWORDS.has(token));
 }
 
 /**
