@@ -9,6 +9,7 @@ import {
   hashOptions,
   type CacheOptions,
 } from '@/lib/cache';
+import { logger } from '@/lib/utils/logger';
 import type { Quiz, QuizGenerationOptions, QuizGenerationResult, AIError } from '@/types';
 
 // =====================================================
@@ -44,7 +45,7 @@ export async function generateQuiz(
 
   // 1. 짧은 텍스트는 전처리 없이 바로 AI 생성
   if (!shouldPreprocess(content)) {
-    console.log(`[Hybrid] Short text (${originalLength} chars), skipping preprocessing`);
+    logger.info('NLP', `짧은 텍스트 (${originalLength}자) - 전처리 생략`);
     const result = await generateQuizWithFallback(content, options);
     return {
       ...result,
@@ -62,7 +63,7 @@ export async function generateQuiz(
       const cached = await getCachedQuiz(contentHash, optionsHash);
 
       if (cached) {
-        console.log(`[Hybrid] Cache HIT for content hash: ${contentHash.slice(0, 8)}...`);
+        logger.logCache(true, contentHash);
         return {
           quiz: cached.quiz,
           model: cached.model + ' (cached)',
@@ -72,24 +73,32 @@ export async function generateQuiz(
           processedLength: cached.processedTextLength,
         };
       }
-      console.log(`[Hybrid] Cache MISS for content hash: ${contentHash.slice(0, 8)}...`);
+      logger.logCache(false, contentHash);
     } catch (error) {
-      console.error('[Hybrid] Cache lookup failed:', error);
-      // 캐시 실패는 무시하고 계속 진행
+      logger.warn('Cache', '캐시 조회 실패', { error: String(error) });
     }
   }
 
   // 3. NLP 전처리
-  console.log(`[Hybrid] Preprocessing text (${originalLength} chars)...`);
+  const nlpStartTime = Date.now();
+  logger.info('NLP', `텍스트 전처리 시작 (${originalLength}자)`);
+
   const processed = processText(content);
   const condensedText = processed.topSentences.join('\n\n');
   const processedLength = condensedText.length;
+  const nlpDuration = Date.now() - nlpStartTime;
 
-  console.log(
-    `[Hybrid] Extracted ${processed.topSentences.length} sentences, ` +
-    `${originalLength} → ${processedLength} chars ` +
-    `(${Math.round((1 - processed.extractionRatio) * 100)}% reduction)`
-  );
+  logger.logTextAnalysis({
+    originalLength,
+    sentenceCount: processed.sentences.length,
+    processedLength,
+    language: processed.language,
+    extractionRatio: processed.extractionRatio,
+  });
+  logger.info('NLP', `전처리 완료 (${nlpDuration}ms)`, {
+    '추출 문장 수': processed.topSentences.length,
+    '압축': `${originalLength}자 → ${processedLength}자`,
+  });
 
   // 4. AI 생성 (축소된 텍스트)
   const result = await generateQuizWithFallback(condensedText, options);
@@ -104,10 +113,9 @@ export async function generateQuiz(
         model: result.model,
         processedTextLength: processedLength,
       });
-      console.log(`[Hybrid] Cached quiz for content hash: ${contentHash.slice(0, 8)}...`);
+      logger.info('Cache', `캐시 저장 완료 [${contentHash.slice(0, 8)}...]`);
     } catch (error) {
-      console.error('[Hybrid] Cache save failed:', error);
-      // 캐시 저장 실패는 무시
+      logger.warn('Cache', '캐시 저장 실패', { error: String(error) });
     }
   }
 
@@ -135,9 +143,12 @@ export async function generateQuizWithFallback(
   const models = getModelsByPriority();
   const errors: AIError[] = [];
 
+  logger.info('AI', `AI 모델 호출 시작 (입력 ${content.length}자, ${options.questionCount}문제 요청)`);
+
   for (const model of models) {
+    const aiStartTime = Date.now();
     try {
-      console.log(`[AI] Attempting to generate quiz with ${model.name}...`);
+      logger.info('AI', `🤖 ${model.name} 시도 중...`);
 
       const result = await generateObject({
         model: model.provider,
@@ -146,8 +157,16 @@ export async function generateQuizWithFallback(
         prompt: createUserPrompt(content, options),
       });
 
+      const aiDuration = Date.now() - aiStartTime;
+
       // 성공!
-      console.log(`[AI] Successfully generated quiz with ${model.name}`);
+      logger.logAICall({
+        model: model.name,
+        inputTokens: result.usage?.inputTokens,
+        outputTokens: result.usage?.outputTokens,
+        totalTokens: result.usage?.totalTokens,
+        durationMs: aiDuration,
+      });
 
       const quiz: Quiz = {
         id: crypto.randomUUID(),
@@ -159,13 +178,21 @@ export async function generateQuizWithFallback(
         createdAt: new Date(),
       };
 
+      logger.info('AI', `✅ 퀴즈 생성 성공`, {
+        '문제 수': quiz.questions.length,
+        '소요시간': `${aiDuration}ms`,
+      });
+
       return {
         quiz,
         model: model.name,
         tokensUsed: result.usage?.totalTokens,
       };
     } catch (error: any) {
-      console.error(`[AI] Error with ${model.name}:`, error);
+      const aiDuration = Date.now() - aiStartTime;
+      logger.error('AI', `❌ ${model.name} 실패 (${aiDuration}ms)`, {
+        error: error.message || String(error),
+      });
 
       // 에러 분류
       const aiError: AIError = classifyError(error, model.name);
@@ -188,7 +215,7 @@ export async function generateQuizWithFallback(
       }
 
       // 다음 모델로 계속 시도
-      console.log(`[AI] Falling back to next model...`);
+      logger.warn('AI', `다음 모델로 폴백...`);
       continue;
     }
   }

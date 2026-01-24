@@ -118,43 +118,33 @@ export default function UploadPage() {
       });
 
       setProgress(70);
-      console.log('[DEBUG] API response received, status:', response.status);
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || ERROR_MESSAGES.QUIZ_GENERATION_FAILED);
       }
 
-      console.log('[DEBUG] Parsing response JSON...');
       const data = await response.json();
-      console.log('[DEBUG] Response data received:', { success: data.success, hasQuiz: !!data.quiz });
       setProgress(90);
 
       if (!data.success || !data.quiz) {
-        console.log('[DEBUG] Invalid data:', { success: data.success, hasQuiz: !!data.quiz });
         throw new Error(ERROR_MESSAGES.QUIZ_DATA_MISSING);
       }
 
       const quiz: Quiz = data.quiz;
-      console.log('[DEBUG] Quiz parsed, id:', quiz.id);
 
       // 로컬 스토리지에 저장
-      console.log('[DEBUG] Saving to localStorage...');
       saveQuizToLocal(quiz);
-      console.log('[DEBUG] Saved to localStorage');
 
       // 로그인 시 DB에도 저장
       if (user) {
-        console.log('[DEBUG] Saving to DB...');
         const dbResult = await saveQuizToDb(quiz, user.id, content, difficulty);
         if (!dbResult.success) {
           console.warn('DB 저장 실패, localStorage만 사용:', dbResult.error);
         }
-        console.log('[DEBUG] DB save complete');
       }
 
       setProgress(100);
-      console.log('[DEBUG] Navigating to /quiz/' + quiz.id);
 
       // 퀴즈 페이지로 이동
       router.push(`/quiz/${quiz.id}`);

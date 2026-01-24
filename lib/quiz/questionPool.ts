@@ -11,6 +11,7 @@ import {
   DEFAULT_TRANSFORMATION_OPTIONS,
 } from './questionTransformer';
 import { QUESTION_COUNT } from '@/lib/constants';
+import { logger } from '@/lib/utils/logger';
 import type {
   Question,
   Quiz,
@@ -88,22 +89,25 @@ export async function generateQuestionPool(
     targetCount: config.targetCount ?? options.questionCount,
   };
 
-  console.log('[QuestionPool] Starting generation:', {
-    targetCount: fullConfig.targetCount,
-    aiRatio: fullConfig.aiRatio,
-    transformRatio: fullConfig.transformRatio,
+  logger.info('Pool', '🎱 문제 풀 생성 시작', {
+    '목표 문제 수': fullConfig.targetCount,
+    'AI 비율': `${fullConfig.aiRatio * 100}%`,
+    '변형 비율': `${fullConfig.transformRatio * 100}%`,
   });
 
   // 1. 텍스트 분석 및 최대 문제 수 확인
+  const nlpStart = Date.now();
   const processedText = processText(content);
   const capacity = calculateQuestionCapacity(content, processedText);
+  logger.debug('Pool', `텍스트 분석 완료 (${Date.now() - nlpStart}ms)`, {
+    '최대 용량': capacity.max,
+    '최적 문제 수': capacity.optimal,
+  });
 
   // 목표 수가 최대 용량을 초과하면 조정 (bypassCapacityCheck가 아닌 경우)
   let adjustedTarget = fullConfig.targetCount;
   if (!fullConfig.bypassCapacityCheck && adjustedTarget > capacity.max) {
-    console.log(
-      `[QuestionPool] Target ${adjustedTarget} exceeds capacity ${capacity.max}, adjusting`
-    );
+    logger.warn('Pool', `목표(${adjustedTarget})가 최대 용량(${capacity.max})을 초과, 조정됨`);
     adjustedTarget = capacity.max;
   }
 
@@ -112,10 +116,11 @@ export async function generateQuestionPool(
 
   // 3. AI 배치 생성
   let batchResult: BatchGenerationResult;
+  const batchStart = Date.now();
 
   // 10개 이하면 단일 배치, 초과면 멀티 배치
   if (aiTargetCount <= QUESTION_COUNT.BATCH_SIZE) {
-    console.log('[QuestionPool] Using single batch generation');
+    logger.info('Pool', `단일 배치 생성 (목표: ${aiTargetCount}문제)`);
     batchResult = await generateQuestionBatch(content, options, {
       targetQuestionCount: aiTargetCount,
       maxBatches: 1,
@@ -123,7 +128,8 @@ export async function generateQuestionPool(
       overproductionRatio: 1.2,
     });
   } else {
-    console.log('[QuestionPool] Using multi-batch generation');
+    const batchCount = Math.ceil(aiTargetCount / QUESTION_COUNT.BATCH_SIZE);
+    logger.info('Pool', `멀티 배치 생성 (목표: ${aiTargetCount}문제, ${batchCount}배치)`);
     const batchConfig: Partial<BatchGenerationConfig> = {
       targetQuestionCount: aiTargetCount,
       maxBatches: fullConfig.maxBatches,
@@ -133,9 +139,10 @@ export async function generateQuestionPool(
     batchResult = await generateQuestionBatch(content, options, batchConfig);
   }
 
-  console.log(
-    `[QuestionPool] AI generated ${batchResult.questions.length} questions`
-  );
+  logger.info('Pool', `AI 배치 생성 완료 (${Date.now() - batchStart}ms)`, {
+    '생성된 문제': batchResult.questions.length,
+    '토큰 사용량': batchResult.tokensUsed,
+  });
 
   // 4. 변형으로 추가 문제 생성
   let allQuestions = [...batchResult.questions];
@@ -143,7 +150,8 @@ export async function generateQuestionPool(
 
   const transformTarget = adjustedTarget - allQuestions.length;
   if (transformTarget > 0 && fullConfig.transformRatio > 0) {
-    console.log(`[QuestionPool] Transforming to add ${transformTarget} more questions`);
+    const transformStart = Date.now();
+    logger.info('Transform', `문제 변형 시작 (추가 목표: ${transformTarget}문제)`);
 
     const transformedQuestions = transformQuestions(
       batchResult.questions,
@@ -161,7 +169,9 @@ export async function generateQuestionPool(
       allQuestions = newTransformed;
     }
 
-    console.log(`[QuestionPool] Added ${transformedCount} transformed questions`);
+    logger.info('Transform', `문제 변형 완료 (${Date.now() - transformStart}ms)`, {
+      '추가된 문제': transformedCount,
+    });
   }
 
   // 5. 셔플 및 최종 선택
@@ -175,11 +185,11 @@ export async function generateQuestionPool(
 
   const generationTimeMs = Date.now() - startTime;
 
-  console.log('[QuestionPool] Generation complete:', {
-    total: finalQuestions.length,
-    aiGenerated: batchResult.questions.length,
-    transformed: transformedCount,
-    timeMs: generationTimeMs,
+  logger.info('Pool', `🎱 문제 풀 생성 완료 (${generationTimeMs}ms)`, {
+    '최종 문제 수': finalQuestions.length,
+    'AI 생성': batchResult.questions.length,
+    '변형 추가': transformedCount,
+    '총 토큰': batchResult.tokensUsed,
   });
 
   return {

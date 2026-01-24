@@ -5,6 +5,7 @@
 
 import { tokenize, detectLanguage } from './koreanTokenizer';
 import { calculateAllSentenceScores } from './tfidf';
+import { logger } from '@/lib/utils/logger';
 
 // =====================================================
 // Types
@@ -165,13 +166,21 @@ export function extractTopSentences(
  * 4. 핵심 문장 추출
  */
 export function processText(text: string): ProcessedText {
+  const startTime = Date.now();
   const originalLength = text.length;
   const language = detectLanguage(text);
 
+  logger.debug('NLP', `언어 감지: ${language}`);
+
   // 1. 문장 분리
+  const splitStart = Date.now();
   const rawSentences = splitSentences(text);
+  logger.debug('NLP', `문장 분리 완료 (${Date.now() - splitStart}ms)`, {
+    '문장 수': rawSentences.length,
+  });
 
   if (rawSentences.length === 0) {
+    logger.warn('NLP', '문장을 찾을 수 없음');
     return {
       originalLength,
       sentences: [],
@@ -182,10 +191,18 @@ export function processText(text: string): ProcessedText {
   }
 
   // 2. 토큰화
+  const tokenStart = Date.now();
   const tokenizedSentences = rawSentences.map((s) => tokenize(s));
+  const totalTokens = tokenizedSentences.reduce((sum, t) => sum + t.length, 0);
+  logger.debug('NLP', `토큰화 완료 (${Date.now() - tokenStart}ms)`, {
+    '총 토큰 수': totalTokens,
+    '평균 토큰/문장': Math.round(totalTokens / rawSentences.length),
+  });
 
   // 3. TF-IDF 점수 계산
+  const tfidfStart = Date.now();
   const scores = calculateAllSentenceScores(tokenizedSentences);
+  logger.debug('NLP', `TF-IDF 계산 완료 (${Date.now() - tfidfStart}ms)`);
 
   // 4. ScoredSentence 배열 생성
   const scoredSentences: ScoredSentence[] = rawSentences.map((text, index) => ({
@@ -196,14 +213,32 @@ export function processText(text: string): ProcessedText {
   }));
 
   // 5. 중복 제거
+  const dedupeStart = Date.now();
   const uniqueSentences = removeDuplicateSentences(scoredSentences);
+  const removedCount = scoredSentences.length - uniqueSentences.length;
+  logger.debug('NLP', `중복 제거 완료 (${Date.now() - dedupeStart}ms)`, {
+    '제거된 문장': removedCount,
+    '남은 문장': uniqueSentences.length,
+  });
 
   // 6. 핵심 문장 추출
+  const extractStart = Date.now();
   const topSentences = extractTopSentences(uniqueSentences);
+  logger.debug('NLP', `핵심 문장 추출 완료 (${Date.now() - extractStart}ms)`, {
+    '추출 문장 수': topSentences.length,
+  });
 
   // 7. 추출 비율 계산
   const extractedLength = topSentences.reduce((sum, s) => sum + s.text.length, 0);
   const extractionRatio = extractedLength / originalLength;
+
+  const totalDuration = Date.now() - startTime;
+  logger.info('NLP', `📊 텍스트 처리 완료 (${totalDuration}ms)`, {
+    '원본': `${originalLength}자`,
+    '처리 후': `${extractedLength}자`,
+    '압축률': `${Math.round((1 - extractionRatio) * 100)}%`,
+    '문장': `${rawSentences.length} → ${topSentences.length}`,
+  });
 
   return {
     originalLength,
