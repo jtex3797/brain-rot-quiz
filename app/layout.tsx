@@ -19,6 +19,19 @@ export const metadata: Metadata = {
   description: "읽기 어려운 문장들을 재미있게 퀴즈로 변환하여 학습 효율을 극대화하는 게이미피케이션 퀴즈 앱",
 };
 
+// 다크모드 깜빡임 방지를 위한 blocking script
+// React hydration 전에 실행되어 테마를 즉시 적용
+const themeScript = `
+  (function() {
+    try {
+      var theme = localStorage.getItem('brainrot-theme');
+      if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (e) {}
+  })();
+`;
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -41,6 +54,10 @@ export default async function RootLayout({
 
   return (
     <html lang="ko" suppressHydrationWarning>
+      <head>
+        {/* 다크모드 깜빡임 방지: hydration 전에 테마 즉시 적용 */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
