@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { QuizPlayer } from '@/components/quiz/QuizPlayer';
 import { Button } from '@/components/ui/Button';
-import { getQuizFromLocal } from '@/lib/utils/storage';
+import { getQuizFromLocal, saveQuizToLocal } from '@/lib/utils/storage';
 import { useAuth } from '@/contexts/AuthContext';
 import { getQuizFromDb } from '@/lib/supabase/quiz';
 import { ERROR_MESSAGES } from '@/lib/constants';
-import type { Quiz } from '@/types';
+import type { Quiz, Question } from '@/types';
 
 type PageState = 'loading' | 'error' | 'ready';
 
@@ -19,6 +19,9 @@ export default function QuizPage() {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [isDbQuiz, setIsDbQuiz] = useState(false);
   const [pageState, setPageState] = useState<PageState>('loading');
+  const [remainingCount, setRemainingCount] = useState<number | undefined>(undefined);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [answeredQuestionIds, setAnsweredQuestionIds] = useState<string[]>([]);
 
   useEffect(() => {
     const loadQuiz = async () => {
@@ -35,6 +38,7 @@ export default function QuizPage() {
         if (dbQuiz) {
           setQuiz(dbQuiz);
           setIsDbQuiz(true);
+          setRemainingCount(dbQuiz.remainingCount);
           setPageState('ready');
           return;
         }
@@ -50,11 +54,60 @@ export default function QuizPage() {
 
       setQuiz(loadedQuiz);
       setIsDbQuiz(false);
+      setRemainingCount(loadedQuiz.remainingCount);
       setPageState('ready');
     };
 
     loadQuiz();
   }, [params.id, user]);
+
+  // 더 풀기 핸들러
+  const handleLoadMore = useCallback(async () => {
+    if (!quiz?.poolId || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      // 현재까지 푼 문제 ID 수집 (중복 방지)
+      const excludeIds = [...answeredQuestionIds, ...quiz.questions.map(q => q.id)];
+
+      const response = await fetch('/api/quiz/load-more', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          poolId: quiz.poolId,
+          count: 5, // 한 번에 5문제씩 로드
+          excludeIds: user ? excludeIds : undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('문제 로드 실패');
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.questions?.length > 0) {
+        // 새 문제로 퀴즈 업데이트
+        const newQuestions: Question[] = data.questions;
+        const updatedQuiz: Quiz = {
+          ...quiz,
+          questions: newQuestions,
+          remainingCount: data.remainingCount,
+        };
+
+        setQuiz(updatedQuiz);
+        setRemainingCount(data.remainingCount);
+        setAnsweredQuestionIds(excludeIds);
+
+        // 로컬 스토리지도 업데이트
+        saveQuizToLocal(updatedQuiz);
+      }
+    } catch (error) {
+      console.error('Load more failed:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [quiz, user, answeredQuestionIds, isLoadingMore]);
 
   // 로딩 상태
   if (pageState === 'loading') {
@@ -126,7 +179,13 @@ export default function QuizPage() {
         </div>
 
         {/* 퀴즈 플레이어 */}
-        <QuizPlayer quiz={quiz} isDbQuiz={isDbQuiz} />
+        <QuizPlayer
+          quiz={quiz}
+          isDbQuiz={isDbQuiz}
+          onLoadMore={quiz.poolId ? handleLoadMore : undefined}
+          isLoadingMore={isLoadingMore}
+          remainingCount={remainingCount}
+        />
       </div>
     </div>
   );

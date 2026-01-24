@@ -131,7 +131,12 @@ export default function UploadPage() {
         throw new Error(ERROR_MESSAGES.QUIZ_DATA_MISSING);
       }
 
-      const quiz: Quiz = data.quiz;
+      const quiz: Quiz = {
+        ...data.quiz,
+        // Question Pool 시스템에서 반환된 추가 정보 포함
+        poolId: data.poolId,
+        remainingCount: data.remainingCount,
+      };
 
       // 로컬 스토리지에 저장
       saveQuizToLocal(quiz);

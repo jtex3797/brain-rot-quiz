@@ -29,6 +29,9 @@ export interface Quiz {
   title: string;
   questions: Question[];
   createdAt: Date;
+  // Question Pool 시스템용 (500자 이상 텍스트)
+  poolId?: string;
+  remainingCount?: number;
 }
 
 /**

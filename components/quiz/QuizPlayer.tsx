@@ -18,9 +18,18 @@ import type { Quiz } from '@/types';
 interface QuizPlayerProps {
   quiz: Quiz;
   isDbQuiz?: boolean;
+  onLoadMore?: () => Promise<void>;
+  isLoadingMore?: boolean;
+  remainingCount?: number;
 }
 
-export function QuizPlayer({ quiz, isDbQuiz = false }: QuizPlayerProps) {
+export function QuizPlayer({
+  quiz,
+  isDbQuiz = false,
+  onLoadMore,
+  isLoadingMore = false,
+  remainingCount,
+}: QuizPlayerProps) {
   const totalQuestions = quiz.questions.length;
 
   // 커스텀 훅 사용
@@ -107,6 +116,10 @@ export function QuizPlayer({ quiz, isDbQuiz = false }: QuizPlayerProps) {
         maxCombo={maxCombo}
         onRetry={handleRetry}
         sessionResult={sessionResult}
+        poolId={quiz.poolId}
+        remainingCount={remainingCount ?? quiz.remainingCount}
+        onLoadMore={onLoadMore}
+        isLoadingMore={isLoadingMore}
       />
     );
   }
