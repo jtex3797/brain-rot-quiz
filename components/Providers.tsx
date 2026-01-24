@@ -5,12 +5,12 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { SoundProvider } from '@/contexts/SoundContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import type { Session } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types/supabase';
 
 interface ProvidersProps {
   children: ReactNode;
-  initialSession?: Session | null;
+  initialUser?: User | null;
   initialProfile?: Profile | null;
 }
 
@@ -20,13 +20,13 @@ interface ProvidersProps {
  */
 export function Providers({
   children,
-  initialSession,
+  initialUser,
   initialProfile,
 }: ProvidersProps) {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <AuthProvider initialSession={initialSession} initialProfile={initialProfile}>
+        <AuthProvider initialUser={initialUser} initialProfile={initialProfile}>
           <SoundProvider>{children}</SoundProvider>
         </AuthProvider>
       </ThemeProvider>

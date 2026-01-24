@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMyQuizzes, deleteQuizFromDb } from '@/lib/supabase/quiz';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -18,15 +17,25 @@ export default function MyQuizzesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // 퀴즈 목록 로드
+  // 퀴즈 목록 로드 (서버 API 사용)
   useEffect(() => {
     async function loadQuizzes() {
-      if (!user) return;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
 
       setIsLoading(true);
-      const data = await getMyQuizzes(user.id);
-      setQuizzes(data);
-      setIsLoading(false);
+      try {
+        const response = await fetch('/api/my-quizzes');
+        const data = await response.json();
+        setQuizzes(data.quizzes ?? []);
+      } catch (error) {
+        console.error('퀴즈 목록 로드 실패:', error);
+        setQuizzes([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
 
     if (!authLoading) {
@@ -34,18 +43,25 @@ export default function MyQuizzesPage() {
     }
   }, [user, authLoading]);
 
-  // 퀴즈 삭제
+  // 퀴즈 삭제 (서버 API 사용)
   async function handleDelete(quizId: string) {
     if (!user) return;
     if (!confirm('정말 이 퀴즈를 삭제하시겠습니까?')) return;
 
     setDeletingId(quizId);
-    const result = await deleteQuizFromDb(quizId, user.id);
+    try {
+      const response = await fetch(`/api/my-quizzes?id=${quizId}`, {
+        method: 'DELETE',
+      });
+      const result = await response.json();
 
-    if (result.success) {
-      setQuizzes((prev) => prev.filter((q) => q.id !== quizId));
-    } else {
-      alert('삭제 실패: ' + result.error);
+      if (result.success) {
+        setQuizzes((prev) => prev.filter((q) => q.id !== quizId));
+      } else {
+        alert('삭제 실패: ' + result.error);
+      }
+    } catch (error) {
+      alert('삭제 중 오류가 발생했습니다');
     }
     setDeletingId(null);
   }

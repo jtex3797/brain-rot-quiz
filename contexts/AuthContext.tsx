@@ -26,7 +26,7 @@ interface AuthContextType {
 
 interface AuthProviderProps {
   children: ReactNode;
-  initialSession?: Session | null;
+  initialUser?: User | null;
   initialProfile?: Profile | null;
 }
 
@@ -34,14 +34,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({
   children,
-  initialSession = null,
+  initialUser = null,
   initialProfile = null,
 }: AuthProviderProps) {
   // 초기값을 서버에서 전달받은 값으로 설정 (Hydration mismatch 방지)
-  const [user, setUser] = useState<User | null>(initialSession?.user ?? null);
+  const [user, setUser] = useState<User | null>(initialUser);
   const [profile, setProfile] = useState<Profile | null>(initialProfile);
-  const [session, setSession] = useState<Session | null>(initialSession);
-  const [isLoading, setIsLoading] = useState(!initialSession); // 초기 세션이 있으면 로딩 완료
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(!initialUser); // 초기 유저가 있으면 로딩 완료
 
   // 싱글톤 클라이언트 - 재렌더링 시에도 동일 인스턴스 유지
   const supabase = useMemo(() => createClient(), []);
@@ -72,25 +72,24 @@ export function AuthProvider({
   // 초기 세션 확인 (서버에서 전달받지 못한 경우에만)
   useEffect(() => {
     const initializeAuth = async () => {
-      // 이미 초기 세션이 있으면 프로필만 fetch
-      if (initialSession) {
-        if (!initialProfile && initialSession.user) {
-          const profileData = await fetchProfile(initialSession.user.id);
+      // 이미 초기 유저가 있으면 프로필만 fetch (서버에서 전달받은 경우)
+      if (initialUser) {
+        if (!initialProfile) {
+          const profileData = await fetchProfile(initialUser.id);
           setProfile(profileData);
         }
         setIsLoading(false);
         return;
       }
 
-      // 초기 세션이 없으면 클라이언트에서 fetch
+      // 초기 유저가 없으면 클라이언트에서 fetch
       try {
-        const { data: { session: clientSession } } = await supabase.auth.getSession();
+        const { data: { user: clientUser } } = await supabase.auth.getUser();
 
-        setSession(clientSession);
-        setUser(clientSession?.user ?? null);
+        setUser(clientUser);
 
-        if (clientSession?.user) {
-          const profileData = await fetchProfile(clientSession.user.id);
+        if (clientUser) {
+          const profileData = await fetchProfile(clientUser.id);
           setProfile(profileData);
         }
       } catch (error) {
@@ -122,7 +121,7 @@ export function AuthProvider({
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, fetchProfile, initialSession, initialProfile]);
+  }, [supabase, fetchProfile, initialUser, initialProfile]);
 
   // 회원가입
   const signUp = async (email: string, password: string, nickname?: string) => {

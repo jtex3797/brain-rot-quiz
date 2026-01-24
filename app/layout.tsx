@@ -37,17 +37,17 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // 서버에서 세션 prefetch (깜빡임 방지)
+  // 서버에서 세션 prefetch (깜빡임 방지) - getUser()로 인증 확인
   const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user } } = await supabase.auth.getUser();
 
   // 프로필도 함께 prefetch (선택)
   let profile = null;
-  if (session?.user) {
+  if (user) {
     const { data } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single();
     profile = data;
   }
@@ -61,7 +61,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Providers initialSession={session} initialProfile={profile}>
+        <Providers initialUser={user} initialProfile={profile}>
           {children}
         </Providers>
       </body>
