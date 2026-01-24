@@ -37,6 +37,7 @@
 | 멀티 모델 폴백 | :white_check_mark: | Gemini → GPT → Claude | `lib/ai/models.ts` |
 | 퀴즈 타입 정의 | :white_check_mark: | MCQ, OX, Short Answer | `types/index.ts` |
 | 로컬 스토리지 | :white_check_mark: | 퀴즈 임시 저장 | `lib/utils/storage.ts` |
+| **문제 풀 (Pool)** | :construction: | 최대 용량 생성, 이어 풀기 | `lib/quiz/questionPool.ts`, `docs/Architecture_Question_Pool.md` |
 
 ---
 
@@ -155,3 +156,4 @@
 | 2026-01-21 | Phase 5 XP/레벨/스트릭 시스템 구현 (XPGainDisplay, useQuizSession) |
 | 2026-01-22 | 프로필 페이지 구현 (/profile) |
 | 2026-01-24 | 퀴즈 재도전 기능 완료 표시 (이미 구현되어 있던 기능 확인) |
+| 2026-01-24 | 문제 풀(Question Pool) 시스템 기획 추가 (Phase 1 보강) |
