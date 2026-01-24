@@ -234,6 +234,58 @@ export interface Database {
           expires_at?: string;
         };
       };
+      quiz_pools: {
+        Row: {
+          id: string;
+          content_hash: string;
+          original_content: string;
+          max_capacity: number;
+          generated_count: number;
+          created_at: string;
+          expires_at: string;
+        };
+        Insert: {
+          id?: string;
+          content_hash: string;
+          original_content: string;
+          max_capacity: number;
+          generated_count?: number;
+          created_at?: string;
+          expires_at?: string;
+        };
+        Update: {
+          id?: string;
+          content_hash?: string;
+          original_content?: string;
+          max_capacity?: number;
+          generated_count?: number;
+          created_at?: string;
+          expires_at?: string;
+        };
+      };
+      pool_questions: {
+        Row: {
+          id: string;
+          pool_id: string;
+          question_json: Json;
+          source_type: 'ai' | 'transformed';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          pool_id: string;
+          question_json: Json;
+          source_type: 'ai' | 'transformed';
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          pool_id?: string;
+          question_json?: Json;
+          source_type?: 'ai' | 'transformed';
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -263,6 +315,10 @@ export interface Database {
         Args: Record<string, never>;
         Returns: number;
       };
+      cleanup_expired_pools: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
     };
     Enums: {
       [_ in never]: never;
@@ -288,3 +344,10 @@ export type QuizSessionUpdate = Database['public']['Tables']['quiz_sessions']['U
 
 export type SessionAnswer = Database['public']['Tables']['session_answers']['Row'];
 export type SessionAnswerInsert = Database['public']['Tables']['session_answers']['Insert'];
+
+export type DbQuizPool = Database['public']['Tables']['quiz_pools']['Row'];
+export type DbQuizPoolInsert = Database['public']['Tables']['quiz_pools']['Insert'];
+export type DbQuizPoolUpdate = Database['public']['Tables']['quiz_pools']['Update'];
+
+export type DbPoolQuestion = Database['public']['Tables']['pool_questions']['Row'];
+export type DbPoolQuestionInsert = Database['public']['Tables']['pool_questions']['Insert'];

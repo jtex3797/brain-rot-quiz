@@ -389,3 +389,102 @@ BEGIN
   RETURN deleted_count;
 END;
 $$;
+
+
+-- =====================================================
+-- 8. quiz_pools 테이블 (문제 풀 - 긴 텍스트용 캐시)
+-- =====================================================
+-- 500자 이상 텍스트의 문제 풀 메타데이터
+-- quiz_cache는 짧은 텍스트(500자 미만) 전용으로 유지
+
+CREATE TABLE IF NOT EXISTS public.quiz_pools (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- 캐시 키
+  content_hash TEXT NOT NULL UNIQUE,
+
+  -- 원본 텍스트 (재사용 대비)
+  original_content TEXT NOT NULL,
+
+  -- 용량 정보
+  max_capacity INTEGER NOT NULL,
+  generated_count INTEGER NOT NULL DEFAULT 0,
+
+  -- 타임스탬프
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '30 days') NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_pools_content_hash ON public.quiz_pools(content_hash);
+CREATE INDEX IF NOT EXISTS idx_quiz_pools_expires_at ON public.quiz_pools(expires_at);
+
+-- RLS: 공용 캐시이므로 누구나 읽기/쓰기 가능
+ALTER TABLE public.quiz_pools ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can read pools" ON public.quiz_pools;
+CREATE POLICY "Anyone can read pools"
+  ON public.quiz_pools FOR SELECT
+  USING (TRUE);
+
+DROP POLICY IF EXISTS "Anyone can insert pools" ON public.quiz_pools;
+CREATE POLICY "Anyone can insert pools"
+  ON public.quiz_pools FOR INSERT
+  WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS "Anyone can update pools" ON public.quiz_pools;
+CREATE POLICY "Anyone can update pools"
+  ON public.quiz_pools FOR UPDATE
+  USING (TRUE);
+
+
+-- =====================================================
+-- 9. pool_questions 테이블 (풀 소속 개별 문제)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.pool_questions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- 풀 참조
+  pool_id UUID NOT NULL REFERENCES public.quiz_pools(id) ON DELETE CASCADE,
+
+  -- 문제 데이터 (질문, 보기, 정답, 해설)
+  question_json JSONB NOT NULL,
+
+  -- 생성 방식 (ai: AI 생성, transformed: 변형)
+  source_type TEXT NOT NULL CHECK (source_type IN ('ai', 'transformed')),
+
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_pool_questions_pool_id ON public.pool_questions(pool_id);
+
+-- RLS: 공용 캐시이므로 누구나 읽기/쓰기 가능
+ALTER TABLE public.pool_questions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can read pool questions" ON public.pool_questions;
+CREATE POLICY "Anyone can read pool questions"
+  ON public.pool_questions FOR SELECT
+  USING (TRUE);
+
+DROP POLICY IF EXISTS "Anyone can insert pool questions" ON public.pool_questions;
+CREATE POLICY "Anyone can insert pool questions"
+  ON public.pool_questions FOR INSERT
+  WITH CHECK (TRUE);
+
+
+-- 만료된 풀 자동 삭제 함수
+CREATE OR REPLACE FUNCTION public.cleanup_expired_pools()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  deleted_count INTEGER;
+BEGIN
+  DELETE FROM public.quiz_pools
+  WHERE expires_at < NOW();
+
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+$$;
