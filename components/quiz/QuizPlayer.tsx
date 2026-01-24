@@ -83,6 +83,9 @@ export function QuizPlayer({
 
   const handleAnswer = useCallback(
     (answer: string, isCorrect: boolean) => {
+      // currentQuestion이 없으면 무시 (더 풀기 로딩 중 방지)
+      if (!currentQuestion) return;
+
       // 답변 기록
       recordAnswer(currentQuestion.id, answer, isCorrect);
 
@@ -96,7 +99,7 @@ export function QuizPlayer({
       // 다음 문제로 이동
       moveToNext();
     },
-    [currentQuestion.id, recordAnswer, incrementCombo, resetCombo, moveToNext]
+    [currentQuestion, recordAnswer, incrementCombo, resetCombo, moveToNext]
   );
 
   const handleRetry = useCallback(() => {
@@ -121,6 +124,18 @@ export function QuizPlayer({
         onLoadMore={onLoadMore}
         isLoadingMore={isLoadingMore}
       />
+    );
+  }
+
+  // currentQuestion이 없으면 로딩 표시 (더 풀기 로딩 중)
+  if (!currentQuestion) {
+    return (
+      <div className="flex min-h-[300px] items-center justify-center">
+        <div className="text-center">
+          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
+          <p className="text-foreground/70">문제를 불러오는 중...</p>
+        </div>
+      </div>
     );
   }
 

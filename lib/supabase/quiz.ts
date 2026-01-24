@@ -123,28 +123,34 @@ export async function saveQuizToDb(
 
 // 퀴즈 조회 (ID)
 export async function getQuizFromDb(quizId: string): Promise<Quiz | null> {
+  console.log('[getQuizFromDb] Starting...', { quizId });
   const supabase = createClient() as any;
 
+  console.log('[getQuizFromDb] Fetching quiz...');
   const { data: dbQuiz, error: quizError } = await supabase
     .from('quizzes')
     .select('*')
     .eq('id', quizId)
     .single();
 
+  console.log('[getQuizFromDb] Quiz result:', { found: !!dbQuiz, error: quizError?.message });
   if (quizError || !dbQuiz) return null;
 
+  console.log('[getQuizFromDb] Fetching questions...');
   const { data: dbQuestions, error: questionsError } = await supabase
     .from('questions')
     .select('*')
     .eq('quiz_id', dbQuiz.id)
     .order('order_index');
 
+  console.log('[getQuizFromDb] Questions result:', { count: dbQuestions?.length, error: questionsError?.message });
   if (questionsError || !dbQuestions) return null;
 
   const quiz = fromDbQuiz(dbQuiz as DbQuiz, dbQuestions as DbQuestion[]);
 
   // pool_id가 있으면 남은 문제 수 조회
   if (dbQuiz.pool_id) {
+    console.log('[getQuizFromDb] Fetching pool count...');
     const { count } = await supabase
       .from('pool_questions')
       .select('*', { count: 'exact', head: true })
@@ -152,8 +158,10 @@ export async function getQuizFromDb(quizId: string): Promise<Quiz | null> {
 
     // 현재 퀴즈에 포함된 문제 수 제외 (단순화된 방식)
     quiz.remainingCount = Math.max(0, (count ?? 0) - quiz.questions.length);
+    console.log('[getQuizFromDb] Pool count:', { count, remainingCount: quiz.remainingCount });
   }
 
+  console.log('[getQuizFromDb] Done, returning quiz');
   return quiz;
 }
 

@@ -99,20 +99,24 @@ export async function completeQuizSession(
 
   // 2. 답변 저장 (DB 퀴즈인 경우에만)
   if (quizId && questionIdMap && questionIdMap.size > 0) {
-    const answersData: SessionAnswerInsert[] = answers.map((a) => ({
-      session_id: session.id,
-      question_id: questionIdMap.get(a.questionId) ?? null,
-      user_answer: a.userAnswer,
-      is_correct: a.isCorrect,
-      time_spent_ms: a.timeSpentMs,
-    }));
+    const answersData: SessionAnswerInsert[] = answers
+      .filter((a) => questionIdMap.get(a.questionId)) // null question_id 제외
+      .map((a) => ({
+        session_id: session.id,
+        question_id: questionIdMap.get(a.questionId)!,
+        user_answer: a.userAnswer,
+        is_correct: a.isCorrect,
+        time_spent_ms: a.timeSpentMs,
+      }));
 
-    const { error: answersError } = await supabase
-      .from('session_answers')
-      .insert(answersData);
+    if (answersData.length > 0) {
+      const { error: answersError } = await supabase
+        .from('session_answers')
+        .insert(answersData);
 
-    if (answersError) {
-      console.error('답변 저장 실패:', answersError);
+      if (answersError) {
+        console.error('답변 저장 실패:', answersError.message, answersError.details, answersError.code);
+      }
     }
   }
 

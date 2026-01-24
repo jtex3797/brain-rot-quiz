@@ -26,37 +26,51 @@ export default function QuizPage() {
 
     useEffect(() => {
         const loadQuiz = async () => {
-            const quizId = params.id;
+            try {
+                const quizId = params.id;
+                console.log('[QuizPage] loadQuiz started', { quizId, user: user?.id ?? null });
 
-            if (!quizId) {
-                setPageState('error');
-                return;
-            }
-
-            // 로그인 시 DB에서 먼저 시도
-            if (user) {
-                const dbQuiz = await getQuizFromDb(quizId);
-                if (dbQuiz) {
-                    setQuiz(dbQuiz);
-                    setIsDbQuiz(true);
-                    setRemainingCount(dbQuiz.remainingCount);
-                    setPageState('ready');
+                if (!quizId) {
+                    console.log('[QuizPage] No quizId, setting error');
+                    setPageState('error');
                     return;
                 }
-            }
 
-            // DB에 없으면 로컬 스토리지에서 로드
-            const loadedQuiz = getQuizFromLocal(quizId);
+                // 로그인 시 DB에서 먼저 시도
+                if (user) {
+                    console.log('[QuizPage] User logged in, trying DB...');
+                    const dbQuiz = await getQuizFromDb(quizId);
+                    console.log('[QuizPage] DB result:', dbQuiz ? 'found' : 'not found');
+                    if (dbQuiz) {
+                        setQuiz(dbQuiz);
+                        setIsDbQuiz(true);
+                        setRemainingCount(dbQuiz.remainingCount);
+                        setPageState('ready');
+                        console.log('[QuizPage] Quiz loaded from DB, ready');
+                        return;
+                    }
+                }
 
-            if (!loadedQuiz) {
+                // DB에 없으면 로컬 스토리지에서 로드
+                console.log('[QuizPage] Trying localStorage...');
+                const loadedQuiz = getQuizFromLocal(quizId);
+                console.log('[QuizPage] localStorage result:', loadedQuiz ? 'found' : 'not found');
+
+                if (!loadedQuiz) {
+                    console.log('[QuizPage] Quiz not found anywhere, setting error');
+                    setPageState('error');
+                    return;
+                }
+
+                setQuiz(loadedQuiz);
+                setIsDbQuiz(false);
+                setRemainingCount(loadedQuiz.remainingCount);
+                setPageState('ready');
+                console.log('[QuizPage] Quiz loaded from localStorage, ready');
+            } catch (error) {
+                console.error('[QuizPage] Quiz loading failed:', error);
                 setPageState('error');
-                return;
             }
-
-            setQuiz(loadedQuiz);
-            setIsDbQuiz(false);
-            setRemainingCount(loadedQuiz.remainingCount);
-            setPageState('ready');
         };
 
         loadQuiz();
@@ -169,8 +183,9 @@ export default function QuizPage() {
         <>
             <MinimalHeader title={quiz.title} />
             <div className="container mx-auto px-4 py-6 max-w-3xl">
-                {/* 퀴즈 플레이어 */}
+                {/* 퀴즈 플레이어 - key를 첫 번째 문제 ID로 설정하여 새 문제 로드 시 리마운트 */}
                 <QuizPlayer
+                    key={quiz.questions[0]?.id ?? quiz.id}
                     quiz={quiz}
                     isDbQuiz={isDbQuiz}
                     onLoadMore={quiz.poolId ? handleLoadMore : undefined}
