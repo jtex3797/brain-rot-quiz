@@ -43,7 +43,7 @@ export default function UploadPage() {
   const [textCapacity, setTextCapacity] = useState<QuestionCapacity | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // 텍스트 분석 함수
+  // 텍스트 분석 함수 (questionCount 의존성 제거)
   const analyzeContent = useCallback(async (text: string) => {
     if (text.length < CONTENT_LENGTH.MIN) {
       setTextCapacity(null);
@@ -61,18 +61,20 @@ export default function UploadPage() {
       if (response.ok) {
         const data = await response.json();
         setTextCapacity(data.capacity);
-
-        // 현재 선택된 문제 수가 최대를 초과하면 자동 조정
-        if (data.capacity && questionCount > data.capacity.max) {
-          setQuestionCount(data.capacity.optimal);
-        }
       }
     } catch (err) {
       console.error('Text analysis failed:', err);
     } finally {
       setIsAnalyzing(false);
     }
-  }, [questionCount]);
+  }, []); // 의존성 없음 - 텍스트 변경 시에만 호출됨
+
+  // 문제 수 자동 조정 (textCapacity 변경 시)
+  useEffect(() => {
+    if (textCapacity && questionCount > textCapacity.max) {
+      setQuestionCount(textCapacity.optimal);
+    }
+  }, [textCapacity, questionCount]);
 
   // 디바운스된 분석 함수
   const debouncedAnalyze = useMemo(
