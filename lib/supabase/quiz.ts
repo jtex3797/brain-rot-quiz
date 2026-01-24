@@ -35,6 +35,7 @@ export function toDbQuiz(
     question_count: quiz.questions.length,
     is_public: false,
     share_code: generateShareCode(),
+    pool_id: quiz.poolId ?? null,
   };
 }
 
@@ -62,6 +63,7 @@ export function fromDbQuiz(dbQuiz: DbQuiz, dbQuestions: DbQuestion[]): Quiz {
     questions: dbQuestions
       .sort((a, b) => a.order_index - b.order_index)
       .map(fromDbQuestion),
+    poolId: dbQuiz.pool_id ?? undefined,
     createdAt: new Date(dbQuiz.created_at),
   };
 }
@@ -139,7 +141,20 @@ export async function getQuizFromDb(quizId: string): Promise<Quiz | null> {
 
   if (questionsError || !dbQuestions) return null;
 
-  return fromDbQuiz(dbQuiz as DbQuiz, dbQuestions as DbQuestion[]);
+  const quiz = fromDbQuiz(dbQuiz as DbQuiz, dbQuestions as DbQuestion[]);
+
+  // pool_id가 있으면 남은 문제 수 조회
+  if (dbQuiz.pool_id) {
+    const { count } = await supabase
+      .from('pool_questions')
+      .select('*', { count: 'exact', head: true })
+      .eq('pool_id', dbQuiz.pool_id);
+
+    // 현재 퀴즈에 포함된 문제 수 제외 (단순화된 방식)
+    quiz.remainingCount = Math.max(0, (count ?? 0) - quiz.questions.length);
+  }
+
+  return quiz;
 }
 
 // 내 퀴즈 목록 조회
@@ -179,7 +194,19 @@ export async function getQuizByShareCode(
 
   if (!dbQuestions) return null;
 
-  return fromDbQuiz(dbQuiz as DbQuiz, dbQuestions as DbQuestion[]);
+  const quiz = fromDbQuiz(dbQuiz as DbQuiz, dbQuestions as DbQuestion[]);
+
+  // pool_id가 있으면 남은 문제 수 조회
+  if (dbQuiz.pool_id) {
+    const { count } = await supabase
+      .from('pool_questions')
+      .select('*', { count: 'exact', head: true })
+      .eq('pool_id', dbQuiz.pool_id);
+
+    quiz.remainingCount = Math.max(0, (count ?? 0) - quiz.questions.length);
+  }
+
+  return quiz;
 }
 
 // 퀴즈 삭제

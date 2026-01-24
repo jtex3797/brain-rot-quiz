@@ -8,7 +8,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { saveQuizToLocal } from '@/lib/utils/storage';
 import { useAuth } from '@/contexts/AuthContext';
-import { saveQuizToDb } from '@/lib/supabase/quiz';
 import {
   CONTENT_LENGTH,
   DIFFICULTY_OPTIONS,
@@ -141,11 +140,21 @@ export default function UploadPage() {
       // 로컬 스토리지에 저장
       saveQuizToLocal(quiz);
 
-      // 로그인 시 DB에도 저장
+      // 로그인 시 DB에도 저장 (서버 API 사용)
       if (user) {
-        const dbResult = await saveQuizToDb(quiz, user.id, content, difficulty);
-        if (!dbResult.success) {
-          console.warn('DB 저장 실패, localStorage만 사용:', dbResult.error);
+        try {
+          const saveResponse = await fetch('/api/quiz/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quiz, sourceText: content, difficulty }),
+          });
+          const saveResult = await saveResponse.json();
+
+          if (!saveResult.success) {
+            console.warn('DB 저장 실패 (로컬 저장은 완료):', saveResult.error);
+          }
+        } catch (dbError) {
+          console.error('DB 저장 중 예외 발생 (무시하고 진행):', dbError);
         }
       }
 
@@ -309,11 +318,10 @@ export default function UploadPage() {
                         key={option.value}
                         onClick={() => setDifficulty(option.value)}
                         disabled={loading}
-                        className={`w-full rounded-lg border-2 p-3 text-left transition-colors ${
-                          difficulty === option.value
-                            ? 'border-primary bg-primary/10'
-                            : 'border-foreground/20 hover:border-foreground/40'
-                        } disabled:opacity-50`}
+                        className={`w-full rounded-lg border-2 p-3 text-left transition-colors ${difficulty === option.value
+                          ? 'border-primary bg-primary/10'
+                          : 'border-foreground/20 hover:border-foreground/40'
+                          } disabled:opacity-50`}
                       >
                         <div className="font-medium text-foreground">{option.label}</div>
                         <div className="text-sm text-foreground/60">{option.description}</div>
