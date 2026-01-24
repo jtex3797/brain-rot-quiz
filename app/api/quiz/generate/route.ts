@@ -5,6 +5,7 @@ import {
   createQuizFromPool,
   calculateQuestionCapacity,
 } from '@/lib/quiz';
+import { getOrGenerateQuestionPool } from '@/lib/quiz/questionPoolService';
 import {
   CONTENT_LENGTH,
   QUESTION_COUNT,
@@ -18,6 +19,9 @@ import {
   endStep,
   endPipeline,
 } from '@/lib/utils/logger';
+
+/** 풀 시스템 사용 임계값 (500자 이상) */
+const POOL_THRESHOLD = 500;
 
 /**
  * POST /api/quiz/generate
@@ -98,13 +102,77 @@ export async function POST(req: NextRequest) {
       optimal: capacity.optimal,
     });
 
-    // 문제 수가 10개 초과이거나 용량의 80% 이상 요청 시 문제 풀 시스템 사용
-    const usePoolSystem = questionCount > 10 || questionCount >= capacity.max * 0.8;
-    logger.info('API', `🔀 생성 모드: ${usePoolSystem ? '문제 풀 시스템' : '하이브리드 시스템'}`);
+    // 500자 이상: DB 풀 시스템 사용 (개별 문제 저장 + 더 풀기 지원)
+    // 500자 미만: 기존 하이브리드 시스템 (quiz_cache 사용)
+    const useDbPoolSystem = content.length >= POOL_THRESHOLD;
+
+    // 추가 조건: 10개 초과 또는 용량의 80% 이상 요청 시에도 풀 시스템
+    const usePoolSystem = useDbPoolSystem || questionCount > 10 || questionCount >= capacity.max * 0.8;
+
+    logger.info('API', `🔀 생성 모드 결정`, {
+      '텍스트 길이': content.length,
+      '임계값': POOL_THRESHOLD,
+      'DB 풀 사용': useDbPoolSystem,
+      '풀 시스템 사용': usePoolSystem,
+    });
+
+    if (useDbPoolSystem) {
+      // DB 풀 시스템 사용 (500자 이상) - 개별 문제 저장 + 더 풀기 지원
+      startStep('DB 문제 풀 시스템');
+      const poolResult = await getOrGenerateQuestionPool(content, options, questionCount);
+      endStep({
+        poolId: poolResult.poolId,
+        isFromCache: poolResult.isFromCache,
+        questionCount: poolResult.questions.length,
+        remainingCount: poolResult.remainingCount,
+      });
+
+      startStep('퀴즈 객체 생성');
+      const quiz = {
+        id: crypto.randomUUID(),
+        title: '생성된 퀴즈',
+        questions: poolResult.questions,
+        createdAt: new Date(),
+      };
+      endStep();
+
+      // 퀴즈 유효성 검증
+      startStep('유효성 검증');
+      const validation = validateQuiz(quiz);
+      if (!validation.valid) {
+        endStep({ valid: false });
+        logger.error('API', '퀴즈 유효성 검증 실패', { errors: validation.errors });
+        endPipeline(false, { error: 'VALIDATION_FAILED' });
+        return NextResponse.json(
+          { error: ERROR_MESSAGES.QUIZ_GENERATION_ERROR, details: validation.errors },
+          { status: 500 }
+        );
+      }
+      endStep({ valid: true, questionCount: quiz.questions.length });
+
+      endPipeline(true, {
+        quizId: quiz.id,
+        questionCount: quiz.questions.length,
+        model: 'db-pool-system',
+        isFromCache: poolResult.isFromCache,
+      });
+
+      return NextResponse.json({
+        success: true,
+        quiz,
+        model: 'db-pool-system',
+        poolId: poolResult.poolId,
+        remainingCount: poolResult.remainingCount,
+        isFromCache: poolResult.isFromCache,
+        tokensUsed: poolResult.metadata?.tokensUsed ?? 0,
+        poolMetadata: poolResult.metadata,
+        capacity,
+      });
+    }
 
     if (usePoolSystem) {
-      // 문제 풀 시스템 사용
-      startStep('문제 풀 시스템 생성');
+      // 메모리 풀 시스템 (500자 미만이지만 대량 요청)
+      startStep('메모리 문제 풀 시스템');
       const poolResult = await generateQuestionPool(content, options, {
         targetCount: questionCount,
         aiRatio: 0.7,

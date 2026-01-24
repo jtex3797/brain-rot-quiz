@@ -177,10 +177,17 @@ export async function saveQuestionsToPool(
       return { success: false, savedCount: 0, error: error.message };
     }
 
-    // generated_count 업데이트
+    // generated_count 누적 증가 (RPC 또는 raw SQL로 처리)
+    const { data: poolData } = await (supabase as any)
+      .from('quiz_pools')
+      .select('generated_count')
+      .eq('id', poolId)
+      .single();
+
+    const currentCount = poolData?.generated_count ?? 0;
     await (supabase as any)
       .from('quiz_pools')
-      .update({ generated_count: questions.length })
+      .update({ generated_count: currentCount + questions.length })
       .eq('id', poolId);
 
     return { success: true, savedCount: questions.length };
