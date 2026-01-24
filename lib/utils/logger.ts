@@ -33,7 +33,6 @@ interface PipelineStats {
 // 환경 설정
 // =====================================================
 
-const IS_DEV = process.env.NODE_ENV === 'development';
 const LOG_LEVEL: LogLevel = (process.env.LOG_LEVEL as LogLevel) || 'info';
 
 const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {

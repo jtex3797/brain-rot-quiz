@@ -148,7 +148,7 @@ function transformShiftBlank(question: Question): TransformedQuestion | null {
   if (matches.length === 0) return null;
 
   // 원래 정답으로 빈칸 채우기
-  let filledText = question.questionText.replace(
+  const filledText = question.questionText.replace(
     blankPattern,
     question.correctAnswer
   );

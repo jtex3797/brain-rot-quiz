@@ -13,7 +13,6 @@ import {
 import { QUESTION_COUNT } from '@/lib/constants';
 import { logger } from '@/lib/utils/logger';
 import type {
-  Question,
   Quiz,
   QuizGenerationOptions,
   QuestionPoolResult,

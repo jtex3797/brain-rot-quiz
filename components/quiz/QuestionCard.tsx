@@ -27,18 +27,15 @@ export function QuestionCard({
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { playCorrect, playWrong } = useQuizSound();
 
-  // 문제가 바뀔 때 상태 초기화 및 타이머 정리
+  // 컴포넌트 언마운트 시 타이머 정리
+  // 참고: 문제가 바뀔 때 상태는 key prop으로 컴포넌트가 새로 마운트되어 자동 초기화됨
   useEffect(() => {
-    setSelectedAnswer(null);
-    setShowResult(false);
-    setShortAnswer('');
-
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [question.id]);
+  }, []);
 
   const handleOptionClick = (option: string) => {
     if (disabled || showResult) return;

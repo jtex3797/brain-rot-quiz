@@ -77,7 +77,8 @@ export interface QuizResult {
  */
 export interface AIModel {
   name: string;
-  provider: any; // LanguageModel type from AI SDK
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AI SDK의 LanguageModel 타입이 버전마다 다름
+  provider: any;
   priority: number;
 }
 

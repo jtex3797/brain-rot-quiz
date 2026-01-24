@@ -30,7 +30,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light');
   const [mounted, setMounted] = useState(false);
 
-  // 초기 테마 로드
+  // 초기 테마 로드 (SSR 호환을 위한 hydration 패턴)
   useEffect(() => {
     const stored = localStorage.getItem(THEME_KEY) as Theme | null;
 

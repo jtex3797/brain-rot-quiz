@@ -188,10 +188,11 @@ export async function generateQuizWithFallback(
         model: model.name,
         tokensUsed: result.usage?.totalTokens,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       const aiDuration = Date.now() - aiStartTime;
+      const err = error as { message?: string };
       logger.error('AI', `❌ ${model.name} 실패 (${aiDuration}ms)`, {
-        error: error.message || String(error),
+        error: err.message || String(error),
       });
 
       // 에러 분류
@@ -226,11 +227,12 @@ export async function generateQuizWithFallback(
 /**
  * 에러 분류
  */
-function classifyError(error: any, modelName: string): AIError {
-  const errorMessage = error.message || String(error);
+function classifyError(error: unknown, modelName: string): AIError {
+  const err = error as { message?: string; status?: number };
+  const errorMessage = err.message || String(error);
 
   // Rate Limit (429)
-  if (error.status === 429 || errorMessage.includes('rate limit') || errorMessage.includes('quota')) {
+  if (err.status === 429 || errorMessage.includes('rate limit') || errorMessage.includes('quota')) {
     return {
       code: 'RATE_LIMIT',
       message: '요청 한도를 초과했습니다',
@@ -240,8 +242,8 @@ function classifyError(error: any, modelName: string): AIError {
 
   // Invalid API Key (401, 403)
   if (
-    error.status === 401 ||
-    error.status === 403 ||
+    err.status === 401 ||
+    err.status === 403 ||
     errorMessage.includes('api key') ||
     errorMessage.includes('unauthorized')
   ) {

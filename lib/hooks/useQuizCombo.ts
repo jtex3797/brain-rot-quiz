@@ -21,19 +21,20 @@ export function useQuizCombo(): UseQuizComboReturn {
 
   // 클로저 문제 해결을 위한 ref
   const maxComboRef = useRef(maxCombo);
-  maxComboRef.current = maxCombo;
 
   // 애니메이션 타임아웃 ref (cleanup용)
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 컴포넌트 언마운트 시 타임아웃 정리
+  // maxCombo 변경 시 ref 동기화 및 언마운트 시 타임아웃 정리
   useEffect(() => {
+    maxComboRef.current = maxCombo;
+
     return () => {
       if (animationTimeoutRef.current) {
         clearTimeout(animationTimeoutRef.current);
       }
     };
-  }, []);
+  }, [maxCombo]);
 
   const incrementCombo = useCallback(() => {
     setCombo((prevCombo) => {

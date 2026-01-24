@@ -14,7 +14,8 @@
       "Bash(echo:*)",
       "Bash(npx tsc:*)",
       "Bash(findstr:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(npm run lint)"
     ]
   }
 }

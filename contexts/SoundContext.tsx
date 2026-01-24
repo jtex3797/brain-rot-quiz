@@ -31,7 +31,7 @@ export function SoundProvider({ children }: SoundProviderProps) {
   const [volume, setVolumeState] = useState<number>(SOUND_CONFIG.DEFAULT_VOLUME);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // 클라이언트에서 로컬 스토리지 값 로드
+  // 클라이언트에서 로컬 스토리지 값 로드 (SSR 호환을 위한 hydration 패턴)
   useEffect(() => {
     const storedEnabled = localStorage.getItem(SOUND_STORAGE_KEYS.ENABLED);
     const storedVolume = localStorage.getItem(SOUND_STORAGE_KEYS.VOLUME);
