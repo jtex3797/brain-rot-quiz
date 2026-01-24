@@ -19,7 +19,7 @@
 
 | 항목 | 결정 |
 |------|------|
-| 라이브러리 | **gimci** (순수 JS, 한국어 지원) |
+| 라이브러리 | **Intl.Segmenter** (표준 API, 한국어 단어 분리) |
 | 캐시 TTL | **30일** 만료 |
 | 중복 문장 | **제거** (유사도 기반) |
 | 문장 추출 개수 | **동적** (텍스트 품질/길이 기반) |
@@ -105,7 +105,7 @@ interface ScoredSentence {
 한국어 텍스트 토큰화:
 
 ```typescript
-// 한국어 조사/어미 제거하여 키워드 추출
+// Intl.Segmenter를 사용하여 단어 단위 분리
 function tokenizeKorean(text: string): string[]
 
 // 불용어 필터링
