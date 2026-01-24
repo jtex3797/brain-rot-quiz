@@ -24,13 +24,24 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
 }
 
+interface AuthProviderProps {
+  children: ReactNode;
+  initialSession?: Session | null;
+  initialProfile?: Profile | null;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function AuthProvider({
+  children,
+  initialSession = null,
+  initialProfile = null,
+}: AuthProviderProps) {
+  // 초기값을 서버에서 전달받은 값으로 설정 (Hydration mismatch 방지)
+  const [user, setUser] = useState<User | null>(initialSession?.user ?? null);
+  const [profile, setProfile] = useState<Profile | null>(initialProfile);
+  const [session, setSession] = useState<Session | null>(initialSession);
+  const [isLoading, setIsLoading] = useState(!initialSession); // 초기 세션이 있으면 로딩 완료
 
   // 싱글톤 클라이언트 - 재렌더링 시에도 동일 인스턴스 유지
   const supabase = useMemo(() => createClient(), []);
@@ -58,17 +69,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, fetchProfile]);
 
-  // 초기 세션 확인
+  // 초기 세션 확인 (서버에서 전달받지 못한 경우에만)
   useEffect(() => {
     const initializeAuth = async () => {
-      try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
-
-        if (initialSession?.user) {
+      // 이미 초기 세션이 있으면 프로필만 fetch
+      if (initialSession) {
+        if (!initialProfile && initialSession.user) {
           const profileData = await fetchProfile(initialSession.user.id);
+          setProfile(profileData);
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // 초기 세션이 없으면 클라이언트에서 fetch
+      try {
+        const { data: { session: clientSession } } = await supabase.auth.getSession();
+
+        setSession(clientSession);
+        setUser(clientSession?.user ?? null);
+
+        if (clientSession?.user) {
+          const profileData = await fetchProfile(clientSession.user.id);
           setProfile(profileData);
         }
       } catch (error) {
@@ -100,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, fetchProfile]);
+  }, [supabase, fetchProfile, initialSession, initialProfile]);
 
   // 회원가입
   const signUp = async (email: string, password: string, nickname?: string) => {

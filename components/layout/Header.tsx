@@ -13,14 +13,14 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div id="header-content" className="flex items-center justify-between h-16">
           {/* 로고 */}
           <Link href="/" className="text-xl font-bold text-foreground">
             BrainRotQuiz
           </Link>
 
           {/* 우측 메뉴 */}
-          <div className="flex items-center gap-2">
+          <div id="header-profile-menu" className="flex items-center gap-2">
             <ThemeToggle />
             <SoundToggle />
 

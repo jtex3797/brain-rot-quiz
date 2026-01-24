@@ -5,17 +5,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 export function ThemeToggle() {
   const { theme, toggleTheme, mounted } = useTheme();
 
-  // hydration mismatch 방지: 마운트 전에는 플레이스홀더 표시
-  if (!mounted) {
-    return (
-      <button
-        className="p-2 rounded-full hover:bg-foreground/10 transition-colors"
-        aria-label="테마 전환"
-      >
-        <div className="w-6 h-6" />
-      </button>
-    );
-  }
+  // 마운트 전에는 moon 아이콘 표시 (기본값, 깜빡임 최소화)
+  const showDarkIcon = !mounted || theme === 'light';
 
   return (
     <button
@@ -24,7 +15,7 @@ export function ThemeToggle() {
       aria-label={theme === 'light' ? '다크 모드로 전환' : '라이트 모드로 전환'}
       title={theme === 'light' ? '다크 모드' : '라이트 모드'}
     >
-      {theme === 'light' ? (
+      {showDarkIcon ? (
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
