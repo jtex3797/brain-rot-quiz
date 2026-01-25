@@ -45,7 +45,7 @@ export default async function RootLayout({
   let profile = null;
   if (user) {
     const { data } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('*')
       .eq('id', user.id)
       .single();

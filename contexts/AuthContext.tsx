@@ -49,7 +49,7 @@ export function AuthProvider({
   // 프로필 가져오기
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('*')
       .eq('id', userId)
       .single();

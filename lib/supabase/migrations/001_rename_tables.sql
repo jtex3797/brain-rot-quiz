@@ -19,6 +19,7 @@ ALTER TABLE public.session_answers RENAME TO play_answers;
 -- 2. 컬럼 리네이밍
 -- =====================================================
 ALTER TABLE public.saved_quizzes RENAME COLUMN pool_id TO bank_id;
+ALTER TABLE public.bank_questions RENAME COLUMN pool_id TO bank_id;
 
 -- =====================================================
 -- 3. 인덱스 리네이밍
