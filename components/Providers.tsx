@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { ErrorBoundary } from './ErrorBoundary';
 import { SoundProvider } from '@/contexts/SoundContext';
+import { AutoNextProvider } from '@/contexts/AutoNextContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import type { User } from '@supabase/supabase-js';
@@ -27,7 +28,9 @@ export function Providers({
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider initialUser={initialUser} initialProfile={initialProfile}>
-          <SoundProvider>{children}</SoundProvider>
+          <SoundProvider>
+            <AutoNextProvider>{children}</AutoNextProvider>
+          </SoundProvider>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

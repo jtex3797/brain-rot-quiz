@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { SoundToggle } from '@/components/ui/SoundToggle';
+import { AutoNextToggle } from '@/components/ui/AutoNextToggle';
+import { useAutoNextSettings } from '@/contexts/AutoNextContext';
 import { QuestionCard } from './QuestionCard';
 import { QuizResult } from './QuizResult';
 import { ComboDisplay, ComboCounter } from './ComboDisplay';
@@ -58,6 +60,7 @@ export function QuizPlayer({
   } = useQuizAnswers();
 
   const { submitSession, sessionResult, resetSession } = useQuizSession();
+  const { enabled: autoNext } = useAutoNextSettings();
 
   // 세션 제출 여부 추적 (중복 제출 방지)
   const sessionSubmittedRef = useRef(false);
@@ -152,8 +155,9 @@ export function QuizPlayer({
             {currentIndex + 1} / {totalQuestions}
           </span>
 
-          {/* 사운드 토글 + 콤보 카운터 */}
+          {/* 자동넘김 + 사운드 토글 + 콤보 카운터 */}
           <div className="flex items-center gap-2">
+            <AutoNextToggle />
             <SoundToggle />
             <ComboCounter combo={combo} />
           </div>
@@ -180,6 +184,7 @@ export function QuizPlayer({
             totalQuestions={totalQuestions}
             onAnswer={handleAnswer}
             disabled={false}
+            autoNext={autoNext}
           />
         </AnimatePresence>
       </div>

@@ -12,6 +12,7 @@ interface QuestionCardProps {
   totalQuestions: number;
   onAnswer: (answer: string, isCorrect: boolean) => void;
   disabled: boolean;
+  autoNext: boolean;
 }
 
 export function QuestionCard({
@@ -20,6 +21,7 @@ export function QuestionCard({
   totalQuestions,
   onAnswer,
   disabled,
+  autoNext,
 }: QuestionCardProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
@@ -52,10 +54,12 @@ export function QuestionCard({
       playWrong();
     }
 
-    // 1.5초 후 다음 문제로
-    timeoutRef.current = setTimeout(() => {
-      onAnswer(option, isCorrect);
-    }, 1500);
+    // 자동 넘김 모드일 때만 1.5초 후 다음 문제로
+    if (autoNext) {
+      timeoutRef.current = setTimeout(() => {
+        onAnswer(option, isCorrect);
+      }, 1500);
+    }
   };
 
   const handleShortAnswerSubmit = () => {
@@ -74,9 +78,12 @@ export function QuestionCard({
       playWrong();
     }
 
-    timeoutRef.current = setTimeout(() => {
-      onAnswer(shortAnswer.trim(), isCorrect);
-    }, 1500);
+    // 자동 넘김 모드일 때만 1.5초 후 다음 문제로
+    if (autoNext) {
+      timeoutRef.current = setTimeout(() => {
+        onAnswer(shortAnswer.trim(), isCorrect);
+      }, 1500);
+    }
   };
 
   const getOptionState = (option: string): OptionState => {
@@ -198,6 +205,16 @@ export function QuestionCard({
             <p className="mt-3 text-sm text-foreground/70 border-t border-foreground/10 pt-3">
               {question.explanation}
             </p>
+          )}
+
+          {/* 수동 모드일 때 다음 문제 버튼 */}
+          {!autoNext && (
+            <button
+              onClick={() => onAnswer(selectedAnswer!, isCorrectAnswer)}
+              className="mt-4 w-full rounded-xl bg-primary p-3 font-medium text-white transition-colors hover:bg-primary-hover"
+            >
+              다음 문제 →
+            </button>
           )}
         </motion.div>
       )}
