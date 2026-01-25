@@ -135,7 +135,7 @@ export default function UploadPage() {
       const quiz: Quiz = {
         ...data.quiz,
         // Question Pool 시스템에서 반환된 추가 정보 포함
-        poolId: data.poolId,
+        bankId: data.bankId,
         remainingCount: data.remainingCount,
       };
 

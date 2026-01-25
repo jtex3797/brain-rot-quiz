@@ -16,8 +16,8 @@ interface QuizResultProps {
   maxCombo: number;
   onRetry: () => void;
   sessionResult?: SessionResult | null;
-  // Question Pool 시스템용
-  poolId?: string;
+  // Question Bank 시스템용
+  bankId?: string;
   remainingCount?: number;
   onLoadMore?: () => void;
   isLoadingMore?: boolean;
@@ -31,7 +31,7 @@ export function QuizResult({
   maxCombo,
   onRetry,
   sessionResult,
-  poolId,
+  bankId,
   remainingCount,
   onLoadMore,
   isLoadingMore = false,
@@ -117,7 +117,7 @@ export function QuizResult({
             >
               로그인
             </Link>
-            하면 XP를 획득하고 {poolId ? '풀이 기록이 저장되어요!' : '레벨업 할 수 있어요!'}
+            하면 XP를 획득하고 {bankId ? '풀이 기록이 저장되어요!' : '레벨업 할 수 있어요!'}
           </p>
         </motion.div>
       )}
@@ -216,7 +216,7 @@ export function QuizResult({
       )}
 
       {/* 더 풀기 섹션 (문제 풀이 있을 때만) */}
-      {poolId && remainingCount !== undefined && remainingCount > 0 && (
+      {bankId && remainingCount !== undefined && remainingCount > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -255,7 +255,7 @@ export function QuizResult({
         <Button onClick={onRetry} variant="primary" size="lg">
           다시 풀기
         </Button>
-        {poolId && onResetAll && (
+        {bankId && onResetAll && (
           <Button
             onClick={onResetAll}
             variant="outline"

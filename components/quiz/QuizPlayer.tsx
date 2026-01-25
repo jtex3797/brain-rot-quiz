@@ -121,7 +121,7 @@ export function QuizPlayer({
         maxCombo={maxCombo}
         onRetry={handleRetry}
         sessionResult={sessionResult}
-        poolId={quiz.poolId}
+        bankId={quiz.bankId}
         remainingCount={remainingCount ?? quiz.remainingCount}
         onLoadMore={onLoadMore}
         isLoadingMore={isLoadingMore}

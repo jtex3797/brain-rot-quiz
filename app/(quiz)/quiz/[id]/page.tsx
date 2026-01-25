@@ -92,7 +92,7 @@ export default function QuizPage() {
 
     // 더 풀기 핸들러
     const handleLoadMore = useCallback(async () => {
-        if (!quiz?.poolId || isLoadingMore) return;
+        if (!quiz?.bankId || isLoadingMore) return;
 
         setIsLoadingMore(true);
         try {
@@ -103,7 +103,7 @@ export default function QuizPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    poolId: quiz.poolId,
+                    bankId: quiz.bankId,
                     count: 5, // 한 번에 5문제씩 로드
                     excludeIds, // 로그인 여부 무관하게 항상 전달
                 }),
@@ -140,7 +140,7 @@ export default function QuizPage() {
 
     // 전체 다시 풀기 핸들러
     const handleResetAll = useCallback(async () => {
-        if (!quiz?.poolId || isLoadingMore) return;
+        if (!quiz?.bankId || isLoadingMore) return;
 
         setIsLoadingMore(true);
         try {
@@ -149,7 +149,7 @@ export default function QuizPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    poolId: quiz.poolId,
+                    bankId: quiz.bankId,
                     count: 5,
                     // excludeIds 없음 → 처음부터 랜덤 선택
                 }),
@@ -248,10 +248,10 @@ export default function QuizPage() {
                     key={quiz.questions[0]?.id ?? quiz.id}
                     quiz={quiz}
                     isDbQuiz={isDbQuiz}
-                    onLoadMore={quiz.poolId ? handleLoadMore : undefined}
+                    onLoadMore={quiz.bankId ? handleLoadMore : undefined}
                     isLoadingMore={isLoadingMore}
                     remainingCount={remainingCount}
-                    onResetAll={quiz.poolId ? handleResetAll : undefined}
+                    onResetAll={quiz.bankId ? handleResetAll : undefined}
                 />
             </div>
         </>
