@@ -172,11 +172,8 @@ export function calculateQuestionCapacity(
     Math.min(CAPACITY_CONSTANTS.MAX_CAPACITY, adjustedMax)
   );
 
-  // 최소값은 최대값의 30%
-  const min = Math.max(
-    CAPACITY_CONSTANTS.MIN_CAPACITY,
-    Math.floor(max * 0.3)
-  );
+  // 최소값은 고정 3개 (단, max 초과하지 않음)
+  const min = Math.min(3, max);
 
   // 최적값은 중간값
   const optimal = Math.floor((min + max) / 2);

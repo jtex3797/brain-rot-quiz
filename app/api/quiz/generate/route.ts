@@ -102,6 +102,15 @@ export async function POST(req: NextRequest) {
       optimal: capacity.optimal,
     });
 
+    // 최소 문제 수(3개) 생성 불가 시 에러
+    if (capacity.max < QUESTION_COUNT.MIN) {
+      endPipeline(false, { error: 'CONTENT_INSUFFICIENT', maxCapacity: capacity.max });
+      return NextResponse.json(
+        { error: ERROR_MESSAGES.CONTENT_INSUFFICIENT },
+        { status: 400 }
+      );
+    }
+
     // 500자 이상: DB 문제 은행 시스템 사용 (개별 문제 저장 + 더 풀기 지원)
     // 500자 미만: 기존 하이브리드 시스템 (generation_cache 사용)
     const useDbBankSystem = content.length >= BANK_THRESHOLD;
