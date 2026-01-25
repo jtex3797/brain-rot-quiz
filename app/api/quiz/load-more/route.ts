@@ -45,12 +45,19 @@ export async function POST(req: NextRequest) {
 
     // excludeIds가 있으면 로그인 여부 무관하게 중복 제외 (순차 조회)
     if (body.excludeIds && Array.isArray(body.excludeIds) && body.excludeIds.length > 0) {
-      excludeIds = body.excludeIds;
+      // UUID 형식만 필터링 (로컬 임시 ID "q1" 등 제외)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+      const originalCount = body.excludeIds.length;
+      logger.info('API', '📋 excludeIds 필터링 전', { count: originalCount, first: body.excludeIds[0] });
+
+      excludeIds = body.excludeIds.filter((id: string) => uuidRegex.test(id));
       random = false;
 
       logger.info('API', '📋 excludeIds 기반 순차 조회', {
         userId: user?.id ?? 'anonymous',
         excludeCount: excludeIds.length,
+        filteredCount: originalCount - excludeIds.length,
       });
     } else {
       // excludeIds가 없을 때만 랜덤 추출
