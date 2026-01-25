@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadMoreQuestions } from '@/lib/quiz/questionPoolService';
+import { loadMoreQuestions } from '@/lib/quiz/questionBankService';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
 
 /**
  * POST /api/quiz/load-more
  *
- * 문제 풀에서 추가 문제 로드 (더 풀기)
+ * 문제 은행에서 추가 문제 로드 (더 풀기)
  *
- * 로그인 사용자: session_answers 기반으로 이미 푼 문제 제외
+ * 로그인 사용자: play_answers 기반으로 이미 푼 문제 제외
  * 비로그인 사용자: 랜덤 추출 (중복 가능)
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { poolId, count = 5 } = body;
+    const { bankId, count = 5 } = body;
 
     // 입력 검증
-    if (!poolId || typeof poolId !== 'string') {
+    if (!bankId || typeof bankId !== 'string') {
       return NextResponse.json(
-        { error: '풀 ID가 필요합니다' },
+        { error: '문제 은행 ID가 필요합니다' },
         { status: 400 }
       );
     }
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     }
 
     logger.info('API', '📥 추가 문제 로드 요청', {
-      poolId,
+      bankId,
       count,
     });
 
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 문제 로드
-    const result = await loadMoreQuestions(poolId, count, excludeIds, random);
+    const result = await loadMoreQuestions(bankId, count, excludeIds, random);
 
     if (result.questions.length === 0) {
       return NextResponse.json({

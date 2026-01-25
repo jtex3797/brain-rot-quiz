@@ -5,10 +5,10 @@ import { createClient } from './client';
 import { logger } from '@/lib/utils/logger';
 import type { Quiz, Question } from '@/types';
 import type {
-  DbQuiz,
-  DbQuizInsert,
-  DbQuestion,
-  DbQuestionInsert,
+  DbSavedQuiz,
+  DbSavedQuizInsert,
+  DbSavedQuestion,
+  DbSavedQuestionInsert,
 } from '@/types/supabase';
 
 // 6자리 공유 코드 생성
@@ -26,7 +26,7 @@ export function toDbQuiz(
   userId: string,
   sourceText?: string,
   difficulty?: string
-): DbQuizInsert {
+): DbSavedQuizInsert {
   return {
     id: quiz.id,
     user_id: userId,
@@ -36,7 +36,7 @@ export function toDbQuiz(
     question_count: quiz.questions.length,
     is_public: false,
     share_code: generateShareCode(),
-    pool_id: quiz.poolId ?? null,
+    bank_id: quiz.bankId ?? null,
   };
 }
 
@@ -44,7 +44,7 @@ export function toDbQuiz(
 export function toDbQuestions(
   questions: Question[],
   quizId: string
-): DbQuestionInsert[] {
+): DbSavedQuestionInsert[] {
   return questions.map((q, index) => ({
     quiz_id: quizId,
     type: q.type,
@@ -57,20 +57,20 @@ export function toDbQuestions(
 }
 
 // DB Quiz + Questions -> 프론트엔드 타입
-export function fromDbQuiz(dbQuiz: DbQuiz, dbQuestions: DbQuestion[]): Quiz {
+export function fromDbQuiz(dbQuiz: DbSavedQuiz, dbQuestions: DbSavedQuestion[]): Quiz {
   return {
     id: dbQuiz.id,
     title: dbQuiz.title,
     questions: dbQuestions
       .sort((a, b) => a.order_index - b.order_index)
       .map(fromDbQuestion),
-    poolId: dbQuiz.pool_id ?? undefined,
+    bankId: dbQuiz.bank_id ?? undefined,
     createdAt: new Date(dbQuiz.created_at),
   };
 }
 
 // DB Question -> 프론트엔드 타입
-export function fromDbQuestion(dbQ: DbQuestion): Question {
+export function fromDbQuestion(dbQ: DbSavedQuestion): Question {
   return {
     id: dbQ.id,
     type: dbQ.type,
@@ -98,7 +98,7 @@ export async function saveQuizToDb(
 
   // 1. 퀴즈 메타데이터 저장
   const { error: quizError } = await supabase
-    .from('quizzes')
+    .from('saved_quizzes')
     .insert(quizData);
 
   if (quizError) {
@@ -115,7 +115,7 @@ export async function saveQuizToDb(
   // 2. 문제들 저장
   const questionsData = toDbQuestions(quiz.questions, quiz.id);
   const { error: questionsError } = await supabase
-    .from('questions')
+    .from('saved_questions')
     .insert(questionsData);
 
   if (questionsError) {
@@ -127,7 +127,7 @@ export async function saveQuizToDb(
       questionCount: questionsData.length,
     });
     // 롤백: 퀴즈 삭제
-    await supabase.from('quizzes').delete().eq('id', quiz.id);
+    await supabase.from('saved_quizzes').delete().eq('id', quiz.id);
     return { success: false, error: questionsError.message };
   }
 
@@ -163,12 +163,12 @@ export async function getQuizFromDb(quizId: string): Promise<Quiz | null> {
 
     const quizResult = await withTimeout(
       () => supabase
-        .from('quizzes')
+        .from('saved_quizzes')
         .select('*')
         .eq('id', quizId)
         .maybeSingle(),  // single() → maybeSingle()로 변경: row가 없어도 에러 발생 안함
       10000  // 10초 타임아웃
-    ) as { data: DbQuiz | null; error: any };
+    ) as { data: DbSavedQuiz | null; error: any };
 
     const { data: dbQuiz, error: quizError } = quizResult;
 
@@ -187,12 +187,12 @@ export async function getQuizFromDb(quizId: string): Promise<Quiz | null> {
 
     const questionsResult = await withTimeout(
       () => supabase
-        .from('questions')
+        .from('saved_questions')
         .select('*')
         .eq('quiz_id', dbQuiz.id)
         .order('order_index'),
       10000
-    ) as { data: DbQuestion[] | null; error: any };
+    ) as { data: DbSavedQuestion[] | null; error: any };
 
     const { data: dbQuestions, error: questionsError } = questionsResult;
 
@@ -208,21 +208,21 @@ export async function getQuizFromDb(quizId: string): Promise<Quiz | null> {
 
     const quiz = fromDbQuiz(dbQuiz, dbQuestions);
 
-    // pool_id가 있으면 남은 문제 수 조회
-    if (dbQuiz.pool_id) {
+    // bank_id가 있으면 남은 문제 수 조회
+    if (dbQuiz.bank_id) {
       const countResult = await withTimeout(
         () => supabase
-          .from('pool_questions')
+          .from('bank_questions')
           .select('*', { count: 'exact', head: true })
-          .eq('pool_id', dbQuiz.pool_id),
+          .eq('bank_id', dbQuiz.bank_id),
         5000  // 5초 타임아웃
       ) as { count: number | null };
 
       const { count } = countResult;
       // 현재 퀴즈에 포함된 문제 수 제외 (단순화된 방식)
       quiz.remainingCount = Math.max(0, (count ?? 0) - quiz.questions.length);
-      logger.debug('Supabase', '풀 문제 수 조회 완료', {
-        poolId: dbQuiz.pool_id,
+      logger.debug('Supabase', '은행 문제 수 조회 완료', {
+        bankId: dbQuiz.bank_id,
         totalCount: count,
         remainingCount: quiz.remainingCount,
       });
@@ -243,11 +243,11 @@ export async function getQuizFromDb(quizId: string): Promise<Quiz | null> {
 }
 
 // 내 퀴즈 목록 조회
-export async function getMyQuizzes(userId: string): Promise<DbQuiz[]> {
+export async function getMyQuizzes(userId: string): Promise<DbSavedQuiz[]> {
   const supabase = createClient() as any;
 
   const { data, error } = await supabase
-    .from('quizzes')
+    .from('saved_quizzes')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
@@ -260,7 +260,7 @@ export async function getMyQuizzes(userId: string): Promise<DbQuiz[]> {
     });
     return [];
   }
-  return (data as DbQuiz[]) ?? [];
+  return (data as DbSavedQuiz[]) ?? [];
 }
 
 // 공유 코드로 퀴즈 조회
@@ -270,7 +270,7 @@ export async function getQuizByShareCode(
   const supabase = createClient() as any;
 
   const { data: dbQuiz, error: quizError } = await supabase
-    .from('quizzes')
+    .from('saved_quizzes')
     .select('*')
     .eq('share_code', shareCode)
     .eq('is_public', true)
@@ -290,7 +290,7 @@ export async function getQuizByShareCode(
   if (!dbQuiz) return null;
 
   const { data: dbQuestions, error: questionsError } = await supabase
-    .from('questions')
+    .from('saved_questions')
     .select('*')
     .eq('quiz_id', dbQuiz.id)
     .order('order_index');
@@ -305,19 +305,19 @@ export async function getQuizByShareCode(
   }
   if (!dbQuestions) return null;
 
-  const quiz = fromDbQuiz(dbQuiz as DbQuiz, dbQuestions as DbQuestion[]);
+  const quiz = fromDbQuiz(dbQuiz as DbSavedQuiz, dbQuestions as DbSavedQuestion[]);
 
-  // pool_id가 있으면 남은 문제 수 조회
-  if (dbQuiz.pool_id) {
+  // bank_id가 있으면 남은 문제 수 조회
+  if (dbQuiz.bank_id) {
     const { count, error: countError } = await supabase
-      .from('pool_questions')
+      .from('bank_questions')
       .select('*', { count: 'exact', head: true })
-      .eq('pool_id', dbQuiz.pool_id);
+      .eq('bank_id', dbQuiz.bank_id);
 
     if (countError) {
-      logger.warn('Supabase', '공유 퀴즈 풀 문제 수 조회 실패', {
+      logger.warn('Supabase', '공유 퀴즈 은행 문제 수 조회 실패', {
         error: countError.message,
-        poolId: dbQuiz.pool_id,
+        bankId: dbQuiz.bank_id,
       });
     }
 
@@ -335,7 +335,7 @@ export async function deleteQuizFromDb(
   const supabase = createClient() as any;
 
   const { error } = await supabase
-    .from('quizzes')
+    .from('saved_quizzes')
     .delete()
     .eq('id', quizId)
     .eq('user_id', userId);

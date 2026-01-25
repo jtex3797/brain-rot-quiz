@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
         // 1. 퀴즈 메타데이터 저장
         const { error: quizError } = await (supabase as any)
-            .from('quizzes')
+            .from('saved_quizzes')
             .insert({
                 id: quiz.id,
                 user_id: user.id,
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
                 question_count: quiz.questions.length,
                 is_public: false,
                 share_code: shareCode,
-                pool_id: quiz.poolId ?? null,
+                bank_id: quiz.bankId ?? null,
             });
 
         if (quizError) {
@@ -78,13 +78,13 @@ export async function POST(req: NextRequest) {
         }));
 
         const { error: questionsError } = await (supabase as any)
-            .from('questions')
+            .from('saved_questions')
             .insert(questionsData);
 
         if (questionsError) {
             logger.error('API', '문제 저장 실패', { error: questionsError.message });
             // 롤백: 퀴즈 삭제
-            await (supabase as any).from('quizzes').delete().eq('id', quiz.id);
+            await (supabase as any).from('saved_quizzes').delete().eq('id', quiz.id);
             return NextResponse.json(
                 { success: false, error: questionsError.message },
                 { status: 500 }

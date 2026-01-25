@@ -77,7 +77,7 @@ export async function getCachedQuiz(
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
-      .from('quiz_cache')
+      .from('generation_cache')
       .select('quiz_data, hit_count')
       .eq('content_hash', contentHash)
       .eq('options_hash', optionsHash)
@@ -102,7 +102,7 @@ export async function getCachedQuiz(
     // hit_count 증가 및 last_accessed_at 업데이트
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (supabase as any)
-      .from('quiz_cache')
+      .from('generation_cache')
       .update({
         hit_count: data.hit_count + 1,
         last_accessed_at: new Date().toISOString(),
@@ -139,7 +139,7 @@ export async function setCachedQuiz(
     const supabase = await createClient();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from('quiz_cache').upsert(
+    const { error } = await (supabase as any).from('generation_cache').upsert(
       {
         content_hash: contentHash,
         options_hash: optionsHash,

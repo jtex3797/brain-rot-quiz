@@ -24,7 +24,7 @@ export async function GET() {
 
         // 퀴즈 목록 조회
         const { data: quizzes, error: queryError } = await supabase
-            .from('quizzes')
+            .from('saved_quizzes')
             .select('*')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
@@ -82,7 +82,7 @@ export async function DELETE(req: Request) {
         }
 
         const { error: deleteError } = await supabase
-            .from('quizzes')
+            .from('saved_quizzes')
             .delete()
             .eq('id', quizId)
             .eq('user_id', user.id);

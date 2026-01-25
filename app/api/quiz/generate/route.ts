@@ -5,7 +5,7 @@ import {
   createQuizFromPool,
   calculateQuestionCapacity,
 } from '@/lib/quiz';
-import { getOrGenerateQuestionPool } from '@/lib/quiz/questionPoolService';
+import { getOrGenerateQuestionBank } from '@/lib/quiz/questionBankService';
 import {
   CONTENT_LENGTH,
   QUESTION_COUNT,
@@ -20,8 +20,8 @@ import {
   endPipeline,
 } from '@/lib/utils/logger';
 
-/** 풀 시스템 사용 임계값 (500자 이상) */
-const POOL_THRESHOLD = 500;
+/** 문제 은행 시스템 사용 임계값 (500자 이상) */
+const BANK_THRESHOLD = 500;
 
 /**
  * POST /api/quiz/generate
@@ -102,36 +102,36 @@ export async function POST(req: NextRequest) {
       optimal: capacity.optimal,
     });
 
-    // 500자 이상: DB 풀 시스템 사용 (개별 문제 저장 + 더 풀기 지원)
-    // 500자 미만: 기존 하이브리드 시스템 (quiz_cache 사용)
-    const useDbPoolSystem = content.length >= POOL_THRESHOLD;
+    // 500자 이상: DB 문제 은행 시스템 사용 (개별 문제 저장 + 더 풀기 지원)
+    // 500자 미만: 기존 하이브리드 시스템 (generation_cache 사용)
+    const useDbBankSystem = content.length >= BANK_THRESHOLD;
 
-    // 추가 조건: 10개 초과 또는 용량의 80% 이상 요청 시에도 풀 시스템
-    const usePoolSystem = useDbPoolSystem || questionCount > 10 || questionCount >= capacity.max * 0.8;
+    // 추가 조건: 10개 초과 또는 용량의 80% 이상 요청 시에도 은행 시스템
+    const useBankSystem = useDbBankSystem || questionCount > 10 || questionCount >= capacity.max * 0.8;
 
     logger.info('API', `🔀 생성 모드 결정`, {
       '텍스트 길이': content.length,
-      '임계값': POOL_THRESHOLD,
-      'DB 풀 사용': useDbPoolSystem,
-      '풀 시스템 사용': usePoolSystem,
+      '임계값': BANK_THRESHOLD,
+      'DB 은행 사용': useDbBankSystem,
+      '은행 시스템 사용': useBankSystem,
     });
 
-    if (useDbPoolSystem) {
-      // DB 풀 시스템 사용 (500자 이상) - 개별 문제 저장 + 더 풀기 지원
-      startStep('DB 문제 풀 시스템');
-      const poolResult = await getOrGenerateQuestionPool(content, options, questionCount);
+    if (useDbBankSystem) {
+      // DB 문제 은행 시스템 사용 (500자 이상) - 개별 문제 저장 + 더 풀기 지원
+      startStep('DB 문제 은행 시스템');
+      const bankResult = await getOrGenerateQuestionBank(content, options, questionCount);
       endStep({
-        poolId: poolResult.poolId,
-        isFromCache: poolResult.isFromCache,
-        questionCount: poolResult.questions.length,
-        remainingCount: poolResult.remainingCount,
+        bankId: bankResult.bankId,
+        isFromCache: bankResult.isFromCache,
+        questionCount: bankResult.questions.length,
+        remainingCount: bankResult.remainingCount,
       });
 
       startStep('퀴즈 객체 생성');
       const rawQuiz = {
         id: crypto.randomUUID(),
         title: '생성된 퀴즈',
-        questions: poolResult.questions,
+        questions: bankResult.questions,
         createdAt: new Date(),
       };
       // OX 문제 등 정규화
@@ -155,24 +155,24 @@ export async function POST(req: NextRequest) {
       endPipeline(true, {
         quizId: quiz.id,
         questionCount: quiz.questions.length,
-        model: 'db-pool-system',
-        isFromCache: poolResult.isFromCache,
+        model: 'db-bank-system',
+        isFromCache: bankResult.isFromCache,
       });
 
       return NextResponse.json({
         success: true,
         quiz,
-        model: 'db-pool-system',
-        poolId: poolResult.poolId,
-        remainingCount: poolResult.remainingCount,
-        isFromCache: poolResult.isFromCache,
-        tokensUsed: poolResult.metadata?.tokensUsed ?? 0,
-        poolMetadata: poolResult.metadata,
+        model: 'db-bank-system',
+        bankId: bankResult.bankId,
+        remainingCount: bankResult.remainingCount,
+        isFromCache: bankResult.isFromCache,
+        tokensUsed: bankResult.metadata?.tokensUsed ?? 0,
+        bankMetadata: bankResult.metadata,
         capacity,
       });
     }
 
-    if (usePoolSystem) {
+    if (useBankSystem) {
       // 메모리 풀 시스템 (500자 미만이지만 대량 요청)
       startStep('메모리 문제 풀 시스템');
       const poolResult = await generateQuestionPool(content, options, {

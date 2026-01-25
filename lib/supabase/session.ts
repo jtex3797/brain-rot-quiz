@@ -4,7 +4,7 @@
 import { createClient } from './client';
 import { logger } from '@/lib/utils/logger';
 import type { UserAnswer } from '@/types';
-import type { QuizSessionInsert, SessionAnswerInsert } from '@/types/supabase';
+import type { PlaySessionInsert, PlayAnswerInsert } from '@/types/supabase';
 
 // 세션 완료 결과 타입
 export interface SessionResult {
@@ -49,8 +49,8 @@ export function calculateXP(
 
 /**
  * 퀴즈 세션 완료 및 저장
- * - quiz_sessions 테이블에 세션 저장
- * - session_answers 테이블에 답변 저장 (DB 퀴즈인 경우)
+ * - play_sessions 테이블에 세션 저장
+ * - play_answers 테이블에 답변 저장 (DB 퀴즈인 경우)
  * - add_xp RPC로 XP 추가 및 레벨 업데이트
  * - update_streak RPC로 스트릭 업데이트
  * - increment_profile_stats RPC로 통계 업데이트
@@ -70,7 +70,7 @@ export async function completeQuizSession(
   const xpEarned = calculateXP(correctCount, totalQuestions, maxCombo);
 
   // 1. 세션 생성
-  const sessionData: QuizSessionInsert = {
+  const sessionData: PlaySessionInsert = {
     user_id: userId,
     quiz_id: quizId,
     score,
@@ -83,7 +83,7 @@ export async function completeQuizSession(
   };
 
   const { data: session, error: sessionError } = await supabase
-    .from('quiz_sessions')
+    .from('play_sessions')
     .insert(sessionData)
     .select()
     .single();
@@ -106,7 +106,7 @@ export async function completeQuizSession(
 
   // 2. 답변 저장 (DB 퀴즈인 경우에만)
   if (quizId && questionIdMap && questionIdMap.size > 0) {
-    const answersData: SessionAnswerInsert[] = answers
+    const answersData: PlayAnswerInsert[] = answers
       .filter((a) => questionIdMap.get(a.questionId)) // null question_id 제외
       .map((a) => ({
         session_id: session.id,
@@ -118,7 +118,7 @@ export async function completeQuizSession(
 
     if (answersData.length > 0) {
       const { error: answersError } = await supabase
-        .from('session_answers')
+        .from('play_answers')
         .insert(answersData);
 
       if (answersError) {
@@ -223,7 +223,7 @@ export async function getMySessionHistory(
   const supabase = createClient() as any;
 
   const { data, error } = await supabase
-    .from('quiz_sessions')
+    .from('play_sessions')
     .select(
       `
       id,
@@ -233,7 +233,7 @@ export async function getMySessionHistory(
       max_combo,
       xp_earned,
       completed_at,
-      quizzes:quiz_id (title)
+      saved_quizzes:quiz_id (title)
     `
     )
     .eq('user_id', userId)
@@ -260,6 +260,6 @@ export async function getMySessionHistory(
     max_combo: session.max_combo,
     xp_earned: session.xp_earned,
     completed_at: session.completed_at,
-    quiz_title: session.quizzes?.title ?? null,
+    quiz_title: session.saved_quizzes?.title ?? null,
   }));
 }
