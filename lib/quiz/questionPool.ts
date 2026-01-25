@@ -158,15 +158,10 @@ export async function generateQuestionPool(
       fullConfig.transformationOptions
     );
 
-    // AI 생성 문제와 겹치지 않는 변형 문제만 추가
-    const newTransformed = transformedQuestions.filter(
-      (tq) => !batchResult.questions.some((aq) => aq.id === tq.id)
-    );
-
-    transformedCount = newTransformed.length - batchResult.questions.length;
-    if (transformedCount > 0) {
-      allQuestions = newTransformed;
-    }
+    // transformQuestions는 원본 + 변형을 합쳐서 반환
+    // 변형으로 추가된 문제 수 계산
+    transformedCount = transformedQuestions.length - batchResult.questions.length;
+    allQuestions = transformedQuestions;
 
     logger.info('Transform', `문제 변형 완료 (${Date.now() - transformStart}ms)`, {
       '추가된 문제': transformedCount,

@@ -266,7 +266,7 @@ export interface Database {
           expires_at?: string;
         };
       };
-      bank_questions: {
+      question_bank_items: {
         Row: {
           id: string;
           bank_id: string;
@@ -352,8 +352,8 @@ export type DbQuestionBank = Database['public']['Tables']['question_banks']['Row
 export type DbQuestionBankInsert = Database['public']['Tables']['question_banks']['Insert'];
 export type DbQuestionBankUpdate = Database['public']['Tables']['question_banks']['Update'];
 
-export type DbBankQuestion = Database['public']['Tables']['bank_questions']['Row'];
-export type DbBankQuestionInsert = Database['public']['Tables']['bank_questions']['Insert'];
+export type DbQuestionBankItem = Database['public']['Tables']['question_bank_items']['Row'];
+export type DbQuestionBankItemInsert = Database['public']['Tables']['question_bank_items']['Insert'];
 
 // 하위 호환성을 위한 별칭 (deprecated)
 /** @deprecated Use UserProfile instead */
@@ -394,7 +394,7 @@ export type DbQuizPoolInsert = DbQuestionBankInsert;
 /** @deprecated Use DbQuestionBankUpdate instead */
 export type DbQuizPoolUpdate = DbQuestionBankUpdate;
 
-/** @deprecated Use DbBankQuestion instead */
-export type DbPoolQuestion = DbBankQuestion;
-/** @deprecated Use DbBankQuestionInsert instead */
-export type DbPoolQuestionInsert = DbBankQuestionInsert;
+/** @deprecated Use DbQuestionBankItem instead */
+export type DbPoolQuestion = DbQuestionBankItem;
+/** @deprecated Use DbQuestionBankItemInsert instead */
+export type DbPoolQuestionInsert = DbQuestionBankItemInsert;

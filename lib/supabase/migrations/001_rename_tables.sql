@@ -9,7 +9,7 @@
 ALTER TABLE public.profiles RENAME TO user_profiles;
 ALTER TABLE public.quiz_cache RENAME TO generation_cache;
 ALTER TABLE public.quiz_pools RENAME TO question_banks;
-ALTER TABLE public.pool_questions RENAME TO bank_questions;
+ALTER TABLE public.pool_questions RENAME TO question_bank_items;
 ALTER TABLE public.quizzes RENAME TO saved_quizzes;
 ALTER TABLE public.questions RENAME TO saved_questions;
 ALTER TABLE public.quiz_sessions RENAME TO play_sessions;
@@ -19,7 +19,7 @@ ALTER TABLE public.session_answers RENAME TO play_answers;
 -- 2. 컬럼 리네이밍
 -- =====================================================
 ALTER TABLE public.saved_quizzes RENAME COLUMN pool_id TO bank_id;
-ALTER TABLE public.bank_questions RENAME COLUMN pool_id TO bank_id;
+ALTER TABLE public.question_bank_items RENAME COLUMN pool_id TO bank_id;
 
 -- =====================================================
 -- 3. 인덱스 리네이밍
@@ -36,7 +36,7 @@ ALTER INDEX idx_quiz_cache_hash RENAME TO idx_generation_cache_hash;
 ALTER INDEX idx_quiz_cache_expires RENAME TO idx_generation_cache_expires;
 ALTER INDEX idx_quiz_pools_content_hash RENAME TO idx_question_banks_content_hash;
 ALTER INDEX idx_quiz_pools_expires_at RENAME TO idx_question_banks_expires_at;
-ALTER INDEX idx_pool_questions_pool_id RENAME TO idx_bank_questions_bank_id;
+ALTER INDEX idx_pool_questions_pool_id RENAME TO idx_question_bank_items_bank_id;
 
 -- =====================================================
 -- 4. RLS 정책 재생성 (테이블명 참조 업데이트)
@@ -255,7 +255,7 @@ $$;
 ALTER TABLE public.user_profiles RENAME TO profiles;
 ALTER TABLE public.generation_cache RENAME TO quiz_cache;
 ALTER TABLE public.question_banks RENAME TO quiz_pools;
-ALTER TABLE public.bank_questions RENAME TO pool_questions;
+ALTER TABLE public.question_bank_items RENAME TO pool_questions;
 ALTER TABLE public.saved_quizzes RENAME TO quizzes;
 ALTER TABLE public.saved_questions RENAME TO questions;
 ALTER TABLE public.play_sessions RENAME TO quiz_sessions;

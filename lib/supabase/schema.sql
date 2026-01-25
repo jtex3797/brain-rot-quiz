@@ -121,9 +121,9 @@ CREATE POLICY "Anyone can update banks"
 
 
 -- =====================================================
--- 3. bank_questions 테이블 (은행 소속 개별 문제)
+-- 3. question_bank_items 테이블 (은행 소속 개별 문제)
 -- =====================================================
-CREATE TABLE IF NOT EXISTS public.bank_questions (
+CREATE TABLE IF NOT EXISTS public.question_bank_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- 은행 참조
@@ -138,19 +138,19 @@ CREATE TABLE IF NOT EXISTS public.bank_questions (
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_bank_questions_bank_id ON public.bank_questions(bank_id);
+CREATE INDEX IF NOT EXISTS idx_question_bank_items_bank_id ON public.question_bank_items(bank_id);
 
 -- RLS: 공용 캐시이므로 누구나 읽기/쓰기 가능
-ALTER TABLE public.bank_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.question_bank_items ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Anyone can read bank questions" ON public.bank_questions;
-CREATE POLICY "Anyone can read bank questions"
-  ON public.bank_questions FOR SELECT
+DROP POLICY IF EXISTS "Anyone can read bank items" ON public.question_bank_items;
+CREATE POLICY "Anyone can read bank items"
+  ON public.question_bank_items FOR SELECT
   USING (TRUE);
 
-DROP POLICY IF EXISTS "Anyone can insert bank questions" ON public.bank_questions;
-CREATE POLICY "Anyone can insert bank questions"
-  ON public.bank_questions FOR INSERT
+DROP POLICY IF EXISTS "Anyone can insert bank items" ON public.question_bank_items;
+CREATE POLICY "Anyone can insert bank items"
+  ON public.question_bank_items FOR INSERT
   WITH CHECK (TRUE);
 
 

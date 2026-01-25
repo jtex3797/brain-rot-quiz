@@ -11,8 +11,8 @@ import type { Question } from '@/types';
 import type {
   DbQuestionBank,
   DbQuestionBankInsert,
-  DbBankQuestion,
-  DbBankQuestionInsert,
+  DbQuestionBankItem,
+  DbQuestionBankItemInsert,
 } from '@/types/supabase';
 
 // =====================================================
@@ -38,7 +38,7 @@ export interface CreateBankResult {
 /**
  * DB 문제 → 프론트엔드 타입
  */
-export function fromDbBankQuestion(dbQ: DbBankQuestion): Question {
+export function fromDbBankQuestion(dbQ: DbQuestionBankItem): Question {
   const json = dbQ.question_json as Record<string, any>;
   return {
     id: dbQ.id,
@@ -57,7 +57,7 @@ export function toDbBankQuestion(
   question: Question,
   bankId: string,
   sourceType: 'ai' | 'transformed'
-): DbBankQuestionInsert {
+): DbQuestionBankItemInsert {
   return {
     bank_id: bankId,
     question_json: {
@@ -200,7 +200,7 @@ export async function saveQuestionsToBank(
 
     // insert 후 저장된 데이터를 반환받아 DB ID를 획득
     const { data, error } = await (supabase as any)
-      .from('bank_questions')
+      .from('question_bank_items')
       .insert(insertData)
       .select();
 
@@ -244,7 +244,7 @@ export async function saveQuestionsToBank(
 
     // DB ID가 포함된 문제들 반환
     const savedQuestions = data
-      ? (data as DbBankQuestion[]).map(fromDbBankQuestion)
+      ? (data as DbQuestionBankItem[]).map(fromDbBankQuestion)
       : undefined;
 
     logger.debug('Supabase', '은행 문제 저장 완료', {
@@ -280,7 +280,7 @@ export async function fetchQuestionsFromBank(
 
     // 기본 쿼리
     let query = (supabase as any)
-      .from('bank_questions')
+      .from('question_bank_items')
       .select('*')
       .eq('bank_id', bankId);
 
@@ -305,7 +305,7 @@ export async function fetchQuestionsFromBank(
         return { questions: [], remainingCount: 0 };
       }
 
-      const shuffled = (data as DbBankQuestion[]).sort(() => Math.random() - 0.5);
+      const shuffled = (data as DbQuestionBankItem[]).sort(() => Math.random() - 0.5);
       const selected = shuffled.slice(0, count);
       const remaining = shuffled.length - selected.length;
 
@@ -332,9 +332,9 @@ export async function fetchQuestionsFromBank(
     }
 
     // 남은 문제 수 계산 (UUID는 따옴표로 감싸야 함)
-    const allExcludeIds = [...excludeIds, ...(data as DbBankQuestion[]).map((d) => d.id)];
+    const allExcludeIds = [...excludeIds, ...(data as DbQuestionBankItem[]).map((d) => d.id)];
     const { count: totalCount, error: countError } = await (supabase as any)
-      .from('bank_questions')
+      .from('question_bank_items')
       .select('*', { count: 'exact', head: true })
       .eq('bank_id', bankId)
       .not('id', 'in', `("${allExcludeIds.join('","')}")`);
@@ -347,7 +347,7 @@ export async function fetchQuestionsFromBank(
     }
 
     return {
-      questions: (data as DbBankQuestion[]).map(fromDbBankQuestion),
+      questions: (data as DbQuestionBankItem[]).map(fromDbBankQuestion),
       remainingCount: totalCount ?? 0,
     };
   } catch (e) {
@@ -367,7 +367,7 @@ export async function getBankQuestionCount(bankId: string): Promise<number> {
     const supabase = await createClient();
 
     const { count, error } = await (supabase as any)
-      .from('bank_questions')
+      .from('question_bank_items')
       .select('*', { count: 'exact', head: true })
       .eq('bank_id', bankId);
 

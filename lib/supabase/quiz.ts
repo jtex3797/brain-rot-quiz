@@ -212,7 +212,7 @@ export async function getQuizFromDb(quizId: string): Promise<Quiz | null> {
     if (dbQuiz.bank_id) {
       const countResult = await withTimeout(
         () => supabase
-          .from('bank_questions')
+          .from('question_bank_items')
           .select('*', { count: 'exact', head: true })
           .eq('bank_id', dbQuiz.bank_id),
         5000  // 5초 타임아웃
@@ -310,7 +310,7 @@ export async function getQuizByShareCode(
   // bank_id가 있으면 남은 문제 수 조회
   if (dbQuiz.bank_id) {
     const { count, error: countError } = await supabase
-      .from('bank_questions')
+      .from('question_bank_items')
       .select('*', { count: 'exact', head: true })
       .eq('bank_id', dbQuiz.bank_id);
 
