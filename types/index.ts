@@ -29,8 +29,8 @@ export interface Quiz {
   title: string;
   questions: Question[];
   createdAt: Date;
-  // Question Pool 시스템용 (500자 이상 텍스트)
-  poolId?: string;
+  // Question Bank 시스템용 (500자 이상 텍스트)
+  bankId?: string;
   remainingCount?: number;
 }
 
