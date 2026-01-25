@@ -171,10 +171,12 @@ export async function generateQuizWithFallback(
       const quiz: Quiz = {
         id: crypto.randomUUID(),
         title: result.object.title,
-        questions: result.object.questions.map((q) => ({
-          ...q,
-          correctAnswer: q.correctAnswer,
-        })),
+        questions: result.object.questions
+          .slice(0, options.questionCount) // 요청한 개수만큼 자르기
+          .map((q) => ({
+            ...q,
+            correctAnswer: q.correctAnswer,
+          })),
         createdAt: new Date(),
       };
 

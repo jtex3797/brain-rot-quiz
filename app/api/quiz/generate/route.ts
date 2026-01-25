@@ -142,6 +142,7 @@ export async function POST(req: NextRequest) {
         title: '생성된 퀴즈',
         questions: bankResult.questions,
         createdAt: new Date(),
+        requestedQuestionCount: questionCount,
       };
       // OX 문제 등 정규화
       const quiz = normalizeQuiz(rawQuiz);
@@ -197,6 +198,7 @@ export async function POST(req: NextRequest) {
 
       startStep('퀴즈 객체 생성');
       const rawQuiz = createQuizFromPool(poolResult, '생성된 퀴즈');
+      rawQuiz.requestedQuestionCount = questionCount;
       // OX 문제 등 정규화
       const quiz = normalizeQuiz(rawQuiz);
       endStep();

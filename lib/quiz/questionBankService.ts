@@ -22,10 +22,10 @@ import type { Question, QuizGenerationOptions, QuestionPoolResult } from '@/type
 // =====================================================
 
 /** 은행 최대 용량 */
-const MAX_BANK_CAPACITY = 50;
+const MAX_BANK_CAPACITY = 100;
 
 /** 은행 초기 생성 비율 (최대 용량 대비) */
-const INITIAL_BANK_RATIO = 0.5;
+const INITIAL_BANK_RATIO = 1.0;
 
 // =====================================================
 // Types

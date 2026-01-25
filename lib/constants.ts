@@ -17,7 +17,7 @@ export const STORAGE_KEY_PREFIX = 'brainrotquiz_';
 /** 문제 수 범위 */
 export const QUESTION_COUNT = {
   MIN: 3,
-  MAX: 50,
+  MAX: 100,
   DEFAULT: 5,
   BATCH_SIZE: 7,
   MAX_BATCHES: 5,
@@ -37,10 +37,10 @@ export const DIFFICULTY_OPTIONS: Array<{
   label: string;
   description: string;
 }> = [
-  { value: 'easy', label: '쉬움', description: '객관식 위주' },
-  { value: 'medium', label: '보통', description: '객관식 + OX' },
-  { value: 'hard', label: '어려움', description: '단답형 포함' },
-];
+    { value: 'easy', label: '쉬움', description: '객관식 위주' },
+    { value: 'medium', label: '보통', description: '객관식 + OX' },
+    { value: 'hard', label: '어려움', description: '단답형 포함' },
+  ];
 
 /** 난이도별 설명 (프롬프트용) */
 export const DIFFICULTY_DESCRIPTIONS: Record<Difficulty, string> = {
@@ -140,7 +140,7 @@ export const ERROR_MESSAGES = {
   CONTENT_TOO_SHORT: '텍스트가 너무 짧습니다. 최소 50자 이상 입력해주세요.',
   CONTENT_INSUFFICIENT: '텍스트가 너무 짧아 최소 3개의 문제를 생성할 수 없습니다. 더 긴 내용을 입력해주세요.',
   INVALID_DIFFICULTY: '유효하지 않은 난이도입니다',
-  INVALID_QUESTION_COUNT: '문제 수는 3개에서 50개 사이여야 합니다',
+  INVALID_QUESTION_COUNT: '문제 수는 3개에서 100개 사이여야 합니다',
 
   // 퀴즈 관련
   QUIZ_GENERATION_FAILED: '퀴즈 생성에 실패했습니다',

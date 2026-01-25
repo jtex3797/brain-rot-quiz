@@ -94,6 +94,9 @@ export default function QuizPage() {
     const handleLoadMore = useCallback(async () => {
         if (!quiz?.bankId || isLoadingMore) return;
 
+        // 사용자가 원래 요청한 문제 수만큼 로드 (기본값 5)
+        const loadCount = quiz.requestedQuestionCount ?? 5;
+
         setIsLoadingMore(true);
         try {
             // 현재까지 푼 문제 ID 수집 (중복 방지)
@@ -104,7 +107,7 @@ export default function QuizPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     bankId: quiz.bankId,
-                    count: 5, // 한 번에 5문제씩 로드
+                    count: loadCount, // 하드코딩된 5 대신 사용
                     excludeIds, // 로그인 여부 무관하게 항상 전달
                 }),
             });
@@ -142,15 +145,18 @@ export default function QuizPage() {
     const handleResetAll = useCallback(async () => {
         if (!quiz?.bankId || isLoadingMore) return;
 
+        // 사용자가 원래 요청한 문제 수만큼 로드 (기본값 5)
+        const loadCount = quiz.requestedQuestionCount ?? 5;
+
         setIsLoadingMore(true);
         try {
-            // excludeIds 없이 새로 5개 로드 (처음부터 랜덤 선택)
+            // excludeIds 없이 새로 로드 (처음부터 랜덤 선택)
             const response = await fetch('/api/quiz/load-more', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     bankId: quiz.bankId,
-                    count: 5,
+                    count: loadCount, // 하드코딩된 5 대신 사용
                     // excludeIds 없음 → 처음부터 랜덤 선택
                 }),
             });

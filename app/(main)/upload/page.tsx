@@ -137,6 +137,7 @@ export default function UploadPage() {
         // Question Pool 시스템에서 반환된 추가 정보 포함
         bankId: data.bankId,
         remainingCount: data.remainingCount,
+        requestedQuestionCount: questionCount, // 사용자가 요청한 문제 수 저장
       };
 
       // 로컬 스토리지에 저장
