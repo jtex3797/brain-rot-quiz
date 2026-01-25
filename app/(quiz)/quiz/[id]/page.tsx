@@ -51,6 +51,7 @@ export default function QuizPage() {
                         setQuiz(dbQuiz);
                         setIsDbQuiz(true);
                         setRemainingCount(dbQuiz.remainingCount);
+                        setAnsweredQuestionIds(dbQuiz.questions.map(q => q.id));
                         setPageState('ready');
                         console.log('[QuizPage] Quiz loaded from DB, ready');
                         return;
@@ -72,6 +73,7 @@ export default function QuizPage() {
                 setQuiz(loadedQuiz);
                 setIsDbQuiz(false);
                 setRemainingCount(loadedQuiz.remainingCount);
+                setAnsweredQuestionIds(loadedQuiz.questions.map(q => q.id));
                 setPageState('ready');
                 console.log('[QuizPage] Quiz loaded from localStorage, ready');
             } catch (error) {
@@ -103,7 +105,7 @@ export default function QuizPage() {
                 body: JSON.stringify({
                     poolId: quiz.poolId,
                     count: 5, // 한 번에 5문제씩 로드
-                    excludeIds: user ? excludeIds : undefined,
+                    excludeIds, // 로그인 여부 무관하게 항상 전달
                 }),
             });
 
@@ -134,7 +136,53 @@ export default function QuizPage() {
         } finally {
             setIsLoadingMore(false);
         }
-    }, [quiz, user, answeredQuestionIds, isLoadingMore]);
+    }, [quiz, answeredQuestionIds, isLoadingMore]);
+
+    // 전체 다시 풀기 핸들러
+    const handleResetAll = useCallback(async () => {
+        if (!quiz?.poolId || isLoadingMore) return;
+
+        setIsLoadingMore(true);
+        try {
+            // excludeIds 없이 새로 5개 로드 (처음부터 랜덤 선택)
+            const response = await fetch('/api/quiz/load-more', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    poolId: quiz.poolId,
+                    count: 5,
+                    // excludeIds 없음 → 처음부터 랜덤 선택
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('문제 로드 실패');
+            }
+
+            const data = await response.json();
+
+            if (data.success && data.questions?.length > 0) {
+                const newQuestions: Question[] = data.questions;
+                const updatedQuiz: Quiz = {
+                    ...quiz,
+                    questions: newQuestions,
+                    remainingCount: data.remainingCount,
+                };
+
+                // answeredQuestionIds를 새 문제로 리셋
+                setAnsweredQuestionIds(newQuestions.map(q => q.id));
+                setQuiz(updatedQuiz);
+                setRemainingCount(data.remainingCount);
+
+                // 로컬 스토리지도 업데이트
+                saveQuizToLocal(updatedQuiz);
+            }
+        } catch (error) {
+            console.error('Reset all failed:', error);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    }, [quiz, isLoadingMore]);
 
     // 로딩 상태
     if (pageState === 'loading') {
@@ -203,6 +251,7 @@ export default function QuizPage() {
                     onLoadMore={quiz.poolId ? handleLoadMore : undefined}
                     isLoadingMore={isLoadingMore}
                     remainingCount={remainingCount}
+                    onResetAll={quiz.poolId ? handleResetAll : undefined}
                 />
             </div>
         </>

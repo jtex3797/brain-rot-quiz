@@ -21,6 +21,7 @@ interface QuizPlayerProps {
   onLoadMore?: () => Promise<void>;
   isLoadingMore?: boolean;
   remainingCount?: number;
+  onResetAll?: () => Promise<void>;
 }
 
 export function QuizPlayer({
@@ -29,6 +30,7 @@ export function QuizPlayer({
   onLoadMore,
   isLoadingMore = false,
   remainingCount,
+  onResetAll,
 }: QuizPlayerProps) {
   const totalQuestions = quiz.questions.length;
 
@@ -123,6 +125,7 @@ export function QuizPlayer({
         remainingCount={remainingCount ?? quiz.remainingCount}
         onLoadMore={onLoadMore}
         isLoadingMore={isLoadingMore}
+        onResetAll={onResetAll}
       />
     );
   }

@@ -43,27 +43,21 @@ export async function POST(req: NextRequest) {
     let excludeIds: string[] = [];
     let random = true;
 
-    if (user) {
-      // 로그인 사용자: 이미 푼 문제 ID 조회
-      // session_answers에서 해당 풀의 문제 중 이미 답변한 것들 조회
-      // 주의: pool_questions.id와 session_answers.question_id의 관계
-      // 현재 구조에서는 pool_questions의 id가 직접 저장되지 않으므로
-      // 클라이언트에서 excludeIds를 전달받는 방식으로 처리
-
-      // 클라이언트가 excludeIds를 제공하면 사용
-      if (body.excludeIds && Array.isArray(body.excludeIds)) {
-        excludeIds = body.excludeIds;
-      }
+    // excludeIds가 있으면 로그인 여부 무관하게 중복 제외 (순차 조회)
+    if (body.excludeIds && Array.isArray(body.excludeIds) && body.excludeIds.length > 0) {
+      excludeIds = body.excludeIds;
       random = false;
 
-      logger.info('API', '🔐 로그인 사용자 - 순차 조회', {
-        userId: user.id,
+      logger.info('API', '📋 excludeIds 기반 순차 조회', {
+        userId: user?.id ?? 'anonymous',
         excludeCount: excludeIds.length,
       });
     } else {
-      // 비로그인 사용자: 랜덤 추출
+      // excludeIds가 없을 때만 랜덤 추출
       random = true;
-      logger.info('API', '👤 비로그인 사용자 - 랜덤 조회');
+      logger.info('API', '🎲 랜덤 조회 (excludeIds 없음)', {
+        userId: user?.id ?? 'anonymous',
+      });
     }
 
     // 문제 로드

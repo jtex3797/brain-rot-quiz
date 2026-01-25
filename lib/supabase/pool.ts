@@ -284,9 +284,9 @@ export async function fetchQuestionsFromPool(
       .select('*')
       .eq('pool_id', poolId);
 
-    // 제외할 ID가 있으면 필터
+    // 제외할 ID가 있으면 필터 (UUID는 따옴표로 감싸야 함)
     if (excludeIds.length > 0) {
-      query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+      query = query.not('id', 'in', `("${excludeIds.join('","')}")`);
     }
 
     // 랜덤 정렬 또는 생성순
@@ -331,12 +331,13 @@ export async function fetchQuestionsFromPool(
       return { questions: [], remainingCount: 0 };
     }
 
-    // 남은 문제 수 계산
+    // 남은 문제 수 계산 (UUID는 따옴표로 감싸야 함)
+    const allExcludeIds = [...excludeIds, ...(data as DbPoolQuestion[]).map((d) => d.id)];
     const { count: totalCount, error: countError } = await (supabase as any)
       .from('pool_questions')
       .select('*', { count: 'exact', head: true })
       .eq('pool_id', poolId)
-      .not('id', 'in', `(${[...excludeIds, ...(data as DbPoolQuestion[]).map((d) => d.id)].join(',')})`);
+      .not('id', 'in', `("${allExcludeIds.join('","')}")`);
 
     if (countError) {
       logger.warn('Supabase', '남은 문제 수 계산 실패', {

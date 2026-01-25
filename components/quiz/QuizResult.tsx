@@ -21,6 +21,7 @@ interface QuizResultProps {
   remainingCount?: number;
   onLoadMore?: () => void;
   isLoadingMore?: boolean;
+  onResetAll?: () => void;
 }
 
 export function QuizResult({
@@ -34,6 +35,7 @@ export function QuizResult({
   remainingCount,
   onLoadMore,
   isLoadingMore = false,
+  onResetAll,
 }: QuizResultProps) {
   const { user } = useAuth();
   const [showWrongAnswers, setShowWrongAnswers] = useState(false);
@@ -253,6 +255,17 @@ export function QuizResult({
         <Button onClick={onRetry} variant="primary" size="lg">
           다시 풀기
         </Button>
+        {poolId && onResetAll && (
+          <Button
+            onClick={onResetAll}
+            variant="outline"
+            size="lg"
+            loading={isLoadingMore}
+            disabled={isLoadingMore}
+          >
+            전체 다시 풀기
+          </Button>
+        )}
         <Link href="/upload">
           <Button variant="outline" size="lg" className="w-full sm:w-auto">
             새 퀴즈 만들기

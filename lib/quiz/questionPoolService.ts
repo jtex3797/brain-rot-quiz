@@ -77,9 +77,12 @@ export async function getOrGenerateQuestionPool(
         '저장된 문제 수': questionCount,
       });
 
+      // 랜덤으로 문제 선택 (매번 다른 문제가 나오도록)
       const { questions, remainingCount } = await fetchQuestionsFromPool(
         existingPool.id,
-        requestedCount
+        requestedCount,
+        [], // excludeIds 없음
+        true // random = true
       );
 
       return {
