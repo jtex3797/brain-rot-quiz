@@ -20,7 +20,7 @@ import type { Quiz } from '@/types';
 interface QuizPlayerProps {
   quiz: Quiz;
   isDbQuiz?: boolean;
-  onLoadMore?: () => Promise<void>;
+  onLoadMore?: (count: number) => Promise<void>;
   isLoadingMore?: boolean;
   remainingCount?: number;
   onResetAll?: () => Promise<void>;
@@ -129,6 +129,7 @@ export function QuizPlayer({
         onLoadMore={onLoadMore}
         isLoadingMore={isLoadingMore}
         onResetAll={onResetAll}
+        sessionSize={quiz.sessionSize ?? quiz.requestedQuestionCount}
       />
     );
   }

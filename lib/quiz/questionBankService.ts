@@ -24,9 +24,6 @@ import type { Question, QuizGenerationOptions, QuestionPoolResult } from '@/type
 /** 은행 최대 용량 */
 const MAX_BANK_CAPACITY = 100;
 
-/** 은행 초기 생성 비율 (최대 용량 대비) */
-const INITIAL_BANK_RATIO = 1.0;
-
 // =====================================================
 // Types
 // =====================================================
@@ -48,16 +45,23 @@ export interface BankGenerationResult {
  *
  * 1. 기존 은행이 있고 충분한 문제가 있으면 캐시에서 반환
  * 2. 없거나 부족하면 새로 생성 후 DB에 저장
+ *
+ * @param content 텍스트 콘텐츠
+ * @param options 퀴즈 생성 옵션
+ * @param sessionSize 세션당 문제 수 (반환할 문제 수)
+ * @param maxGenerate 최대 생성 수 (선택적, 없으면 텍스트 용량 최대치)
  */
 export async function getOrGenerateQuestionBank(
   content: string,
   options: QuizGenerationOptions,
-  requestedCount: number
+  sessionSize: number,
+  maxGenerate?: number
 ): Promise<BankGenerationResult> {
   const startTime = Date.now();
 
   logger.info('Bank', '🔍 문제 은행 조회/생성 시작', {
-    '요청 문제 수': requestedCount,
+    '세션 크기': sessionSize,
+    '최대 생성': maxGenerate ?? '자동',
     '텍스트 길이': content.length,
   });
 
@@ -71,7 +75,7 @@ export async function getOrGenerateQuestionBank(
     // 기존 은행에서 문제 조회
     const questionCount = await getBankQuestionCount(existingBank.id);
 
-    if (questionCount >= requestedCount) {
+    if (questionCount >= sessionSize) {
       logger.info('Bank', '✅ 캐시 히트! 기존 은행에서 문제 로드', {
         '은행 ID': existingBank.id,
         '저장된 문제 수': questionCount,
@@ -80,7 +84,7 @@ export async function getOrGenerateQuestionBank(
       // 랜덤으로 문제 선택 (매번 다른 문제가 나오도록)
       const { questions, remainingCount } = await fetchQuestionsFromBank(
         existingBank.id,
-        requestedCount,
+        sessionSize,
         [], // excludeIds 없음
         true // random = true
       );
@@ -95,7 +99,7 @@ export async function getOrGenerateQuestionBank(
 
     logger.info('Bank', '⚠️ 은행 존재하나 문제 부족, 추가 생성 필요', {
       '현재': questionCount,
-      '요청': requestedCount,
+      '요청': sessionSize,
     });
   }
 
@@ -106,15 +110,14 @@ export async function getOrGenerateQuestionBank(
   const processedText = processText(content);
   const capacity = calculateQuestionCapacity(content, processedText);
 
-  // 은행 크기 결정: max(요청수, 용량의 50%), 상한 50개
-  const bankSize = Math.min(
-    MAX_BANK_CAPACITY,
-    Math.max(requestedCount, Math.ceil(capacity.max * INITIAL_BANK_RATIO))
-  );
+  // 은행 크기 결정: 항상 텍스트 용량 최대치로 생성 (maxGenerate 지정 시 해당 값 사용)
+  const targetGenerate = maxGenerate ?? capacity.max;
+  const bankSize = Math.min(MAX_BANK_CAPACITY, targetGenerate);
 
-  logger.info('Bank', '📊 은행 크기 결정', {
+  logger.info('Bank', '📊 은행 크기 결정 (최대치 생성 모드)', {
+    '세션 크기': sessionSize,
     '텍스트 최대 용량': capacity.max,
-    '결정된 은행 크기': bankSize,
+    '생성 목표': bankSize,
   });
 
   // 4. 문제 풀 생성
@@ -131,7 +134,7 @@ export async function getOrGenerateQuestionBank(
     // 은행 저장 실패해도 생성된 문제는 반환
     return {
       bankId: '',
-      questions: poolResult.questions.slice(0, requestedCount),
+      questions: poolResult.questions.slice(0, sessionSize),
       isFromCache: false,
       remainingCount: 0,
       metadata: poolResult.metadata,
@@ -160,15 +163,15 @@ export async function getOrGenerateQuestionBank(
   logger.info('Bank', `🏦 은행 생성 완료 (${elapsedMs}ms)`, {
     '은행 ID': bank.id,
     '생성된 문제': poolResult.questions.length,
-    '반환할 문제': Math.min(requestedCount, questionsToReturn.length),
+    '반환할 문제': Math.min(sessionSize, questionsToReturn.length),
     'DB ID 사용': !!saveResult.savedQuestions,
   });
 
   return {
     bankId: bank.id,
-    questions: questionsToReturn.slice(0, requestedCount),
+    questions: questionsToReturn.slice(0, sessionSize),
     isFromCache: false,
-    remainingCount: Math.max(0, questionsToReturn.length - requestedCount),
+    remainingCount: Math.max(0, questionsToReturn.length - sessionSize),
     metadata: poolResult.metadata,
   };
 }

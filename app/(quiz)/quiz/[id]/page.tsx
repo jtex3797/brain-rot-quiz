@@ -90,12 +90,12 @@ export default function QuizPage() {
         };
     }, [params.id, user?.id, isAuthLoading]);
 
-    // 더 풀기 핸들러
-    const handleLoadMore = useCallback(async () => {
+    // 더 풀기 핸들러 (count: 사용자가 모달에서 선택한 문제 수)
+    const handleLoadMore = useCallback(async (count?: number) => {
         if (!quiz?.bankId || isLoadingMore) return;
 
-        // 사용자가 원래 요청한 문제 수만큼 로드 (기본값 5)
-        const loadCount = quiz.requestedQuestionCount ?? 5;
+        // 모달에서 선택한 수 또는 기본 세션 크기 사용
+        const loadCount = count ?? quiz.sessionSize ?? quiz.requestedQuestionCount ?? 5;
 
         setIsLoadingMore(true);
         try {
@@ -107,7 +107,7 @@ export default function QuizPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     bankId: quiz.bankId,
-                    count: loadCount, // 하드코딩된 5 대신 사용
+                    count: loadCount,
                     excludeIds, // 로그인 여부 무관하게 항상 전달
                 }),
             });
@@ -145,8 +145,8 @@ export default function QuizPage() {
     const handleResetAll = useCallback(async () => {
         if (!quiz?.bankId || isLoadingMore) return;
 
-        // 사용자가 원래 요청한 문제 수만큼 로드 (기본값 5)
-        const loadCount = quiz.requestedQuestionCount ?? 5;
+        // 세션 크기 사용 (기본값 5)
+        const loadCount = quiz.sessionSize ?? quiz.requestedQuestionCount ?? 5;
 
         setIsLoadingMore(true);
         try {

@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   CONTENT_LENGTH,
   DIFFICULTY_OPTIONS,
+  SESSION_SIZE,
   ERROR_MESSAGES,
   type Difficulty,
 } from '@/lib/constants';
@@ -113,7 +114,7 @@ export default function UploadPage() {
         },
         body: JSON.stringify({
           content,
-          questionCount,
+          sessionSize: questionCount, // 세션당 문제 수
           difficulty,
         }),
       });
@@ -137,7 +138,8 @@ export default function UploadPage() {
         // Question Pool 시스템에서 반환된 추가 정보 포함
         bankId: data.bankId,
         remainingCount: data.remainingCount,
-        requestedQuestionCount: questionCount, // 사용자가 요청한 문제 수 저장
+        sessionSize: questionCount, // 세션당 문제 수
+        requestedQuestionCount: questionCount, // 하위 호환
       };
 
       // 로컬 스토리지에 저장
@@ -251,13 +253,13 @@ export default function UploadPage() {
               <CardTitle>퀴즈 설정</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* 문제 수 */}
+              {/* 세션당 문제 수 */}
               <div>
                 <label htmlFor="questionCount" className="mb-2 block text-sm font-medium text-foreground">
-                  문제 수: {questionCount}개
+                  세션당 문제 수: {questionCount}개
                   {textCapacity && (
                     <span className="ml-2 text-xs text-foreground/60">
-                      (최대 {textCapacity.max}개 가능)
+                      (총 {textCapacity.max}개 생성)
                     </span>
                   )}
                   {isAnalyzing && (
@@ -267,8 +269,8 @@ export default function UploadPage() {
                 <input
                   type="range"
                   id="questionCount"
-                  min={textCapacity?.min || 3}
-                  max={textCapacity?.max || 15}
+                  min={SESSION_SIZE.MIN}
+                  max={Math.min(SESSION_SIZE.MAX, textCapacity?.max || SESSION_SIZE.MAX)}
                   step="1"
                   value={questionCount}
                   onChange={(e) => setQuestionCount(parseInt(e.target.value))}
@@ -276,8 +278,8 @@ export default function UploadPage() {
                   className="w-full"
                 />
                 <div className="mt-1 flex justify-between text-xs text-foreground/60">
-                  <span>{textCapacity?.min || 3}개</span>
-                  <span>{textCapacity?.max || 15}개</span>
+                  <span>{SESSION_SIZE.MIN}개</span>
+                  <span>{Math.min(SESSION_SIZE.MAX, textCapacity?.max || SESSION_SIZE.MAX)}개</span>
                 </div>
 
                 {/* 용량 인디케이터 */}

@@ -23,6 +23,13 @@ export const QUESTION_COUNT = {
   MAX_BATCHES: 5,
 } as const;
 
+/** 세션당 문제 수 범위 (한 번에 푸는 묶음 단위) */
+export const SESSION_SIZE = {
+  MIN: 3,
+  MAX: 20,
+  DEFAULT: 5,
+} as const;
+
 /** 텍스트 입력 제한 */
 export const CONTENT_LENGTH = {
   MIN: 50,

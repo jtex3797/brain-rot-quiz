@@ -9,6 +9,7 @@ import { getOrGenerateQuestionBank } from '@/lib/quiz/questionBankService';
 import {
   CONTENT_LENGTH,
   QUESTION_COUNT,
+  SESSION_SIZE,
   ERROR_MESSAGES,
   type Difficulty,
 } from '@/lib/constants';
@@ -36,8 +37,10 @@ export async function POST(req: NextRequest) {
     // 요청 본문 파싱
     startStep('요청 파싱');
     const body = await req.json();
-    const { content, questionCount = 5, difficulty = 'medium', bypassCache = false } = body;
-    endStep({ questionCount, difficulty, bypassCache });
+    const { content, difficulty = 'medium', bypassCache = false } = body;
+    // sessionSize 지원 + sessionSize 하위 호환
+    const sessionSize = body.sessionSize ?? body.sessionSize ?? SESSION_SIZE.DEFAULT;
+    endStep({ sessionSize, difficulty, bypassCache });
 
     // 입력 검증
     startStep('입력 검증');
@@ -59,7 +62,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (questionCount < QUESTION_COUNT.MIN || questionCount > QUESTION_COUNT.MAX) {
+    if (sessionSize < QUESTION_COUNT.MIN || sessionSize > QUESTION_COUNT.MAX) {
       endStep();
       endPipeline(false, { error: 'INVALID_QUESTION_COUNT' });
       return NextResponse.json(
@@ -79,16 +82,16 @@ export async function POST(req: NextRequest) {
     }
     endStep();
 
-    // 퀴즈 생성 옵션
+    // 퀴즈 생성 옵션 (questionCount는 하위 호환용)
     const options = {
-      questionCount,
+      questionCount: sessionSize,
       difficulty: difficulty as Difficulty,
       bypassCache: Boolean(bypassCache),
     };
 
     logger.info('API', '📥 요청 정보', {
       '텍스트 길이': `${content.length}자`,
-      '요청 문제 수': questionCount,
+      '요청 문제 수': sessionSize,
       '난이도': difficulty,
       '캐시 우회': bypassCache,
     });
@@ -116,7 +119,7 @@ export async function POST(req: NextRequest) {
     const useDbBankSystem = content.length >= BANK_THRESHOLD;
 
     // 추가 조건: 10개 초과 또는 용량의 80% 이상 요청 시에도 은행 시스템
-    const useBankSystem = useDbBankSystem || questionCount > 10 || questionCount >= capacity.max * 0.8;
+    const useBankSystem = useDbBankSystem || sessionSize > 10 || sessionSize >= capacity.max * 0.8;
 
     logger.info('API', `🔀 생성 모드 결정`, {
       '텍스트 길이': content.length,
@@ -128,11 +131,12 @@ export async function POST(req: NextRequest) {
     if (useDbBankSystem) {
       // DB 문제 은행 시스템 사용 (500자 이상) - 개별 문제 저장 + 더 풀기 지원
       startStep('DB 문제 은행 시스템');
-      const bankResult = await getOrGenerateQuestionBank(content, options, questionCount);
+      // 세션 크기만큼 반환하되, 텍스트 용량 최대치로 생성
+      const bankResult = await getOrGenerateQuestionBank(content, options, sessionSize, capacity.max);
       endStep({
         bankId: bankResult.bankId,
         isFromCache: bankResult.isFromCache,
-        questionCount: bankResult.questions.length,
+        sessionSize: bankResult.questions.length,
         remainingCount: bankResult.remainingCount,
       });
 
@@ -142,7 +146,8 @@ export async function POST(req: NextRequest) {
         title: '생성된 퀴즈',
         questions: bankResult.questions,
         createdAt: new Date(),
-        requestedQuestionCount: questionCount,
+        sessionSize, // 세션당 문제 수
+        requestedQuestionCount: sessionSize, // 하위 호환
       };
       // OX 문제 등 정규화
       const quiz = normalizeQuiz(rawQuiz);
@@ -160,11 +165,11 @@ export async function POST(req: NextRequest) {
           { status: 500 }
         );
       }
-      endStep({ valid: true, questionCount: quiz.questions.length });
+      endStep({ valid: true, sessionSize: quiz.questions.length });
 
       endPipeline(true, {
         quizId: quiz.id,
-        questionCount: quiz.questions.length,
+        sessionSize: quiz.questions.length,
         model: 'db-bank-system',
         isFromCache: bankResult.isFromCache,
       });
@@ -186,7 +191,7 @@ export async function POST(req: NextRequest) {
       // 메모리 풀 시스템 (500자 미만이지만 대량 요청)
       startStep('메모리 문제 풀 시스템');
       const poolResult = await generateQuestionPool(content, options, {
-        targetCount: questionCount,
+        targetCount: sessionSize,
         aiRatio: 0.7,
         transformRatio: 0.3,
       });
@@ -198,7 +203,8 @@ export async function POST(req: NextRequest) {
 
       startStep('퀴즈 객체 생성');
       const rawQuiz = createQuizFromPool(poolResult, '생성된 퀴즈');
-      rawQuiz.requestedQuestionCount = questionCount;
+      rawQuiz.sessionSize = sessionSize; // 세션당 문제 수
+      rawQuiz.requestedQuestionCount = sessionSize; // 하위 호환
       // OX 문제 등 정규화
       const quiz = normalizeQuiz(rawQuiz);
       endStep();
@@ -215,11 +221,11 @@ export async function POST(req: NextRequest) {
           { status: 500 }
         );
       }
-      endStep({ valid: true, questionCount: quiz.questions.length });
+      endStep({ valid: true, sessionSize: quiz.questions.length });
 
       endPipeline(true, {
         quizId: quiz.id,
-        questionCount: quiz.questions.length,
+        sessionSize: quiz.questions.length,
         model: 'pool-system',
         tokensUsed: poolResult.metadata.tokensUsed,
       });
@@ -257,12 +263,12 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-    endStep({ valid: true, questionCount: result.quiz.questions.length });
+    endStep({ valid: true, sessionSize: result.quiz.questions.length });
 
     endPipeline(true, {
       quizId: result.quiz.id,
       model: result.model,
-      questionCount: result.quiz.questions.length,
+      sessionSize: result.quiz.questions.length,
       cached: result.cached,
       preprocessed: result.preprocessed,
       tokensUsed: result.tokensUsed,
@@ -308,6 +314,6 @@ export async function GET() {
     status: 'ok',
     message: 'Quiz generation API is running',
     supportedDifficulties: ['easy', 'medium', 'hard'] as Difficulty[],
-    questionCountRange: { min: QUESTION_COUNT.MIN, max: QUESTION_COUNT.MAX },
+    sessionSizeRange: { min: QUESTION_COUNT.MIN, max: QUESTION_COUNT.MAX },
   });
 }

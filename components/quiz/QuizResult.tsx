@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { XPGainDisplay } from './XPGainDisplay';
+import { LoadMoreModal } from './LoadMoreModal';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Question, UserAnswer } from '@/types';
 import type { SessionResult } from '@/lib/supabase/session';
@@ -19,9 +20,10 @@ interface QuizResultProps {
   // Question Bank 시스템용
   bankId?: string;
   remainingCount?: number;
-  onLoadMore?: () => void;
+  onLoadMore?: (count: number) => void;
   isLoadingMore?: boolean;
   onResetAll?: () => void;
+  sessionSize?: number; // 세션당 문제 수
 }
 
 export function QuizResult({
@@ -36,9 +38,16 @@ export function QuizResult({
   onLoadMore,
   isLoadingMore = false,
   onResetAll,
+  sessionSize,
 }: QuizResultProps) {
   const { user } = useAuth();
   const [showWrongAnswers, setShowWrongAnswers] = useState(false);
+  const [showLoadMoreModal, setShowLoadMoreModal] = useState(false);
+
+  const handleLoadMoreConfirm = (count: number) => {
+    setShowLoadMoreModal(false);
+    onLoadMore?.(count);
+  };
 
   const correctCount = answers.filter((a) => a.isCorrect).length;
   const totalQuestions = questions.length;
@@ -232,18 +241,28 @@ export function QuizResult({
               )}
             </p>
             <Button
-              onClick={onLoadMore}
+              onClick={() => setShowLoadMoreModal(true)}
               variant="primary"
               size="lg"
               className="w-full bg-success hover:bg-success/90"
               loading={isLoadingMore}
               disabled={isLoadingMore}
             >
-              {isLoadingMore ? '문제 불러오는 중...' : '더 풀기'}
+              {isLoadingMore ? '문제 불러오는 중...' : `더 풀기 (${remainingCount}개 남음)`}
             </Button>
           </div>
         </motion.div>
       )}
+
+      {/* 더 풀기 모달 */}
+      <LoadMoreModal
+        isOpen={showLoadMoreModal}
+        onClose={() => setShowLoadMoreModal(false)}
+        onConfirm={handleLoadMoreConfirm}
+        remainingCount={remainingCount ?? 0}
+        defaultCount={sessionSize}
+        isLoading={isLoadingMore}
+      />
 
       {/* 버튼 그룹 */}
       <motion.div

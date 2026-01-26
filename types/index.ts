@@ -32,7 +32,8 @@ export interface Quiz {
   // Question Bank 시스템용 (500자 이상 텍스트)
   bankId?: string;
   remainingCount?: number;
-  requestedQuestionCount?: number; // 사용자가 요청한 원래 문제 수
+  requestedQuestionCount?: number; // 사용자가 요청한 원래 문제 수 (하위 호환)
+  sessionSize?: number; // 세션당 문제 수 (한 번에 푸는 묶음 단위)
 }
 
 /**
