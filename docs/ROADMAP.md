@@ -37,7 +37,7 @@
 | 멀티 모델 폴백 | :white_check_mark: | Gemini → GPT → Claude | `lib/ai/models.ts` |
 | 퀴즈 타입 정의 | :white_check_mark: | MCQ, OX, Short Answer | `types/index.ts` |
 | 로컬 스토리지 | :white_check_mark: | 퀴즈 임시 저장 | `lib/utils/storage.ts` |
-| **문제 풀 (Pool)** | :construction: | 최대 용량 생성, 이어 풀기 | `lib/quiz/questionPool.ts`, `docs/Architecture_Question_Pool.md` |
+| **문제 은행 (Question Bank)** | :white_check_mark: | 최대 용량 생성, 이어 풀기, DB 저장 | `lib/quiz/questionBankService.ts`, `app/api/quiz` |
 
 ---
 
@@ -104,10 +104,12 @@
 | 오답노트 | :x: | 틀린 문제 저장 | - |
 | 복습 시스템 | :x: | 스페이스드 리피티션 | - |
 | 퀴즈 공유 | :x: | 링크 공유 | - |
-| 다크 모드 | :x: | 테마 전환 | - |
+| 다크 모드 | :white_check_mark: | 테마 전환 (Light/Dark) | `components/ui/ThemeToggle.tsx` |
 | PWA | :x: | 오프라인 지원 | - |
 | 프로필 페이지 | :white_check_mark: | /profile 에서 통계 표시 | `app/profile/page.tsx` |
-| 학습 통계 | :x: | 대시보드 | - |
+| 학습 통계 | :white_check_mark: | 프로필 대시보드 (정답률, 스트릭 등) | `app/profile/page.tsx` |
+| 유사 정답 매칭 | :x: | Fuzzy Matching, 오타 허용 | - |
+| 오류 신고 | :x: | 퀴즈 오류 피드백 | - |
 
 ---
 
@@ -157,3 +159,4 @@
 | 2026-01-22 | 프로필 페이지 구현 (/profile) |
 | 2026-01-24 | 퀴즈 재도전 기능 완료 표시 (이미 구현되어 있던 기능 확인) |
 | 2026-01-24 | 문제 풀(Question Pool) 시스템 기획 추가 (Phase 1 보강) |
+| 2026-01-26 | 문제 은행(Question Bank) 구현 완료 및 UI/UX 개선 (다크모드, 헤더, 통계) |
