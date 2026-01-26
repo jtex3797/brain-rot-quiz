@@ -8,7 +8,7 @@ import { SESSION_SIZE } from '@/lib/constants';
 interface LoadMoreModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (count: number) => void;
+  onConfirm: (count: number, shuffle: boolean) => void;
   remainingCount: number;
   defaultCount?: number;
   isLoading?: boolean;
@@ -25,6 +25,7 @@ export function LoadMoreModal({
   const [selectedCount, setSelectedCount] = useState(
     Math.min(defaultCount, remainingCount)
   );
+  const [shuffle, setShuffle] = useState(true);
 
   // remainingCount나 defaultCount가 변경되면 selectedCount 재설정
   useEffect(() => {
@@ -35,7 +36,7 @@ export function LoadMoreModal({
   const minSelectable = Math.min(SESSION_SIZE.MIN, remainingCount);
 
   const handleConfirm = () => {
-    onConfirm(selectedCount);
+    onConfirm(selectedCount, shuffle);
   };
 
   // 빠른 선택 옵션 (남은 문제 수에 따라 동적 생성)
@@ -105,6 +106,18 @@ export function LoadMoreModal({
                 </button>
               ))}
             </div>
+
+            {/* 순서 섞기 토글 */}
+            <label className="flex items-center gap-2 mb-6 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={shuffle}
+                onChange={(e) => setShuffle(e.target.checked)}
+                className="w-4 h-4 accent-primary rounded"
+                disabled={isLoading}
+              />
+              <span className="text-sm text-foreground">문제 순서 섞기</span>
+            </label>
 
             {/* 버튼 그룹 */}
             <div className="flex gap-3">

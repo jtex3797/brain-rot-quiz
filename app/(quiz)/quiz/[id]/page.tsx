@@ -208,7 +208,7 @@ export default function QuizPage() {
     }, [quiz, isLoadingMore]);
 
     // 내 퀴즈 → 풀기 모달에서 문제 수 선택 시
-    const handleStartWithCount = useCallback(async (count: number) => {
+    const handleStartWithCount = useCallback(async (count: number, shuffle: boolean) => {
         if (!quiz?.bankId) return;
 
         setIsLoadingMore(true);
@@ -219,7 +219,7 @@ export default function QuizPage() {
                 body: JSON.stringify({
                     bankId: quiz.bankId,
                     count,
-                    // excludeIds 없음 → 랜덤 선택
+                    shuffle,
                 }),
             });
 

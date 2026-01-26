@@ -305,7 +305,13 @@ export async function fetchQuestionsFromBank(
         return { questions: [], remainingCount: 0 };
       }
 
-      const shuffled = (data as DbQuestionBankItem[]).sort(() => Math.random() - 0.5);
+      // Fisher-Yates 균등 셔플
+      const arr = [...(data as DbQuestionBankItem[])];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      const shuffled = arr;
       const selected = shuffled.slice(0, count);
       const remaining = shuffled.length - selected.length;
 

@@ -43,6 +43,9 @@ export async function POST(req: NextRequest) {
     let excludeIds: string[] = [];
     let random = true;
 
+    // 클라이언트에서 shuffle 옵션을 명시적으로 전달한 경우 우선 적용
+    const shuffleOverride = typeof body.shuffle === 'boolean' ? body.shuffle : null;
+
     // excludeIds가 있으면 로그인 여부 무관하게 중복 제외 (순차 조회)
     if (body.excludeIds && Array.isArray(body.excludeIds) && body.excludeIds.length > 0) {
       // UUID 형식만 필터링 (로컬 임시 ID "q1" 등 제외)
@@ -52,18 +55,20 @@ export async function POST(req: NextRequest) {
       logger.info('API', '📋 excludeIds 필터링 전', { count: originalCount, first: body.excludeIds[0] });
 
       excludeIds = body.excludeIds.filter((id: string) => uuidRegex.test(id));
-      random = false;
+      random = shuffleOverride ?? false;
 
-      logger.info('API', '📋 excludeIds 기반 순차 조회', {
+      logger.info('API', '📋 excludeIds 기반 조회', {
         userId: user?.id ?? 'anonymous',
         excludeCount: excludeIds.length,
         filteredCount: originalCount - excludeIds.length,
+        random,
       });
     } else {
-      // excludeIds가 없을 때만 랜덤 추출
-      random = true;
-      logger.info('API', '🎲 랜덤 조회 (excludeIds 없음)', {
+      // excludeIds가 없을 때 기본 랜덤, shuffle 명시 시 해당 값 사용
+      random = shuffleOverride ?? true;
+      logger.info('API', '🎲 조회 (excludeIds 없음)', {
         userId: user?.id ?? 'anonymous',
+        random,
       });
     }
 
