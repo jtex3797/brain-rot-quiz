@@ -194,7 +194,7 @@ export default function MyQuizzesPage() {
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => router.push(`/quiz/${quiz.id}`)}
+                      onClick={() => router.push(`/quiz/${quiz.id}?from=myquiz`)}
                     >
                       풀기
                     </Button>

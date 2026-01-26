@@ -1,22 +1,22 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { QuizPlayer } from '@/components/quiz/QuizPlayer';
 import { Button } from '@/components/ui/Button';
+import { LoadMoreModal } from '@/components/quiz/LoadMoreModal';
 import { getQuizFromLocal, saveQuizToLocal } from '@/lib/utils/storage';
-import { useAuth } from '@/contexts/AuthContext';
-import { getQuizFromDb } from '@/lib/supabase/quiz';
 import { ERROR_MESSAGES } from '@/lib/constants';
 import { MinimalHeader } from '@/components/layout/MinimalHeader';
 import type { Quiz, Question } from '@/types';
 
-type PageState = 'loading' | 'error' | 'ready';
+type PageState = 'loading' | 'select' | 'error' | 'ready';
 
 export default function QuizPage() {
     const params = useParams<{ id: string }>();
-    const { user, isLoading: isAuthLoading } = useAuth();
+    const searchParams = useSearchParams();
+    const isFromMyQuiz = searchParams.get('from') === 'myquiz';
     const [quiz, setQuiz] = useState<Quiz | null>(null);
     const [isDbQuiz, setIsDbQuiz] = useState(false);
     const [pageState, setPageState] = useState<PageState>('loading');
@@ -25,15 +25,12 @@ export default function QuizPage() {
     const [answeredQuestionIds, setAnsweredQuestionIds] = useState<string[]>([]);
 
     useEffect(() => {
-        // 인증 로딩 중이면 대기
-        if (isAuthLoading) return;
-
         let cancelled = false;
 
         const loadQuiz = async () => {
             try {
                 const quizId = params.id;
-                console.log('[QuizPage] loadQuiz started', { quizId, user: user?.id ?? null });
+                console.log('[QuizPage] loadQuiz started', { quizId });
 
                 if (!quizId) {
                     console.log('[QuizPage] No quizId, setting error');
@@ -41,21 +38,41 @@ export default function QuizPage() {
                     return;
                 }
 
-                // 로그인 시 DB에서 먼저 시도
-                if (user) {
-                    console.log('[QuizPage] User logged in, trying DB...');
-                    const dbQuiz = await getQuizFromDb(quizId);
-                    if (cancelled) return; // 취소된 경우 상태 업데이트 방지
-                    console.log('[QuizPage] DB result:', dbQuiz ? 'found' : 'not found');
-                    if (dbQuiz) {
-                        setQuiz(dbQuiz);
-                        setIsDbQuiz(true);
-                        setRemainingCount(dbQuiz.remainingCount);
-                        setAnsweredQuestionIds(dbQuiz.questions.map(q => q.id));
-                        setPageState('ready');
-                        console.log('[QuizPage] Quiz loaded from DB, ready');
-                        return;
+                // 서버 API를 통해 DB에서 먼저 시도
+                try {
+                    console.log('[QuizPage] Trying server API...');
+                    const response = await fetch(`/api/quiz/${quizId}`);
+                    if (cancelled) return;
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (cancelled) return;
+
+                        if (data.quiz) {
+                            const dbQuiz: Quiz = {
+                                ...data.quiz,
+                                createdAt: new Date(data.quiz.createdAt),
+                            };
+                            setQuiz(dbQuiz);
+                            setIsDbQuiz(true);
+                            setRemainingCount(dbQuiz.remainingCount);
+                            setAnsweredQuestionIds(dbQuiz.questions.map((q: Question) => q.id));
+
+                            // 내 퀴즈에서 진입 + 은행 존재 → 문제 수 선택 모달
+                            if (isFromMyQuiz && dbQuiz.bankId) {
+                                setPageState('select');
+                                console.log('[QuizPage] Quiz loaded, showing select modal');
+                            } else {
+                                setPageState('ready');
+                                console.log('[QuizPage] Quiz loaded from server API, ready');
+                            }
+                            return;
+                        }
                     }
+                    console.log('[QuizPage] Server API: not found or error');
+                } catch (apiError) {
+                    if (cancelled) return;
+                    console.warn('[QuizPage] Server API failed, trying localStorage...', apiError);
                 }
 
                 // DB에 없으면 로컬 스토리지에서 로드
@@ -88,7 +105,7 @@ export default function QuizPage() {
         return () => {
             cancelled = true;
         };
-    }, [params.id, user?.id, isAuthLoading]);
+    }, [params.id]);
 
     // 더 풀기 핸들러 (count: 사용자가 모달에서 선택한 문제 수)
     const handleLoadMore = useCallback(async (count?: number) => {
@@ -189,6 +206,64 @@ export default function QuizPage() {
             setIsLoadingMore(false);
         }
     }, [quiz, isLoadingMore]);
+
+    // 내 퀴즈 → 풀기 모달에서 문제 수 선택 시
+    const handleStartWithCount = useCallback(async (count: number) => {
+        if (!quiz?.bankId) return;
+
+        setIsLoadingMore(true);
+        try {
+            const response = await fetch('/api/quiz/load-more', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bankId: quiz.bankId,
+                    count,
+                    // excludeIds 없음 → 랜덤 선택
+                }),
+            });
+
+            if (!response.ok) throw new Error('문제 로드 실패');
+
+            const data = await response.json();
+
+            if (data.success && data.questions?.length > 0) {
+                const newQuestions: Question[] = data.questions;
+                const updatedQuiz: Quiz = {
+                    ...quiz,
+                    questions: newQuestions,
+                    remainingCount: data.remainingCount,
+                };
+
+                setQuiz(updatedQuiz);
+                setRemainingCount(data.remainingCount);
+                setAnsweredQuestionIds(newQuestions.map(q => q.id));
+                saveQuizToLocal(updatedQuiz);
+            }
+        } catch (error) {
+            console.error('Start with count failed:', error);
+        } finally {
+            setIsLoadingMore(false);
+            setPageState('ready');
+        }
+    }, [quiz]);
+
+    // 문제 수 선택 상태 (내 퀴즈 → 풀기)
+    if (pageState === 'select' && quiz) {
+        const totalBankCount = quiz.questions.length + (quiz.remainingCount ?? 0);
+        return (
+            <>
+                <MinimalHeader title={quiz.title} />
+                <LoadMoreModal
+                    isOpen={true}
+                    onClose={() => setPageState('ready')}
+                    onConfirm={handleStartWithCount}
+                    remainingCount={totalBankCount}
+                    isLoading={isLoadingMore}
+                />
+            </>
+        );
+    }
 
     // 로딩 상태
     if (pageState === 'loading') {
