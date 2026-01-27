@@ -24,6 +24,7 @@ interface QuizResultProps {
   isLoadingMore?: boolean;
   onResetAll?: () => void;
   sessionSize?: number; // 세션당 문제 수
+  backHref?: string;
 }
 
 export function QuizResult({
@@ -39,6 +40,7 @@ export function QuizResult({
   isLoadingMore = false,
   onResetAll,
   sessionSize,
+  backHref,
 }: QuizResultProps) {
   const { user } = useAuth();
   const [showWrongAnswers, setShowWrongAnswers] = useState(false);
@@ -290,9 +292,9 @@ export function QuizResult({
             새 퀴즈 만들기
           </Button>
         </Link>
-        <Link href="/">
+        <Link href={backHref ?? '/'}>
           <Button variant="ghost" size="lg" className="w-full sm:w-auto">
-            홈으로
+            {backHref === '/my-quizzes' ? '내 퀴즈로' : '홈으로'}
           </Button>
         </Link>
       </motion.div>

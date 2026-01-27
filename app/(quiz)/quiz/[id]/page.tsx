@@ -17,6 +17,7 @@ export default function QuizPage() {
     const params = useParams<{ id: string }>();
     const searchParams = useSearchParams();
     const isFromMyQuiz = searchParams.get('from') === 'myquiz';
+    const backHref = isFromMyQuiz ? '/my-quizzes' : '/';
     const [quiz, setQuiz] = useState<Quiz | null>(null);
     const [isDbQuiz, setIsDbQuiz] = useState(false);
     const [pageState, setPageState] = useState<PageState>('loading');
@@ -253,7 +254,7 @@ export default function QuizPage() {
         const totalBankCount = quiz.questions.length + (quiz.remainingCount ?? 0);
         return (
             <>
-                <MinimalHeader title={quiz.title} />
+                <MinimalHeader title={quiz.title} backHref={backHref} backLabel={isFromMyQuiz ? '내 퀴즈로' : '나가기'} />
                 <LoadMoreModal
                     isOpen={true}
                     onClose={() => setPageState('ready')}
@@ -322,7 +323,7 @@ export default function QuizPage() {
 
     return (
         <>
-            <MinimalHeader title={quiz.title} />
+            <MinimalHeader title={quiz.title} backHref={backHref} backLabel={isFromMyQuiz ? '내 퀴즈로' : '나가기'} />
             <div className="container mx-auto px-4 py-6 max-w-3xl">
                 {/* 퀴즈 플레이어 - key를 첫 번째 문제 ID로 설정하여 새 문제 로드 시 리마운트 */}
                 <QuizPlayer
@@ -333,6 +334,7 @@ export default function QuizPage() {
                     isLoadingMore={isLoadingMore}
                     remainingCount={remainingCount}
                     onResetAll={quiz.bankId ? handleResetAll : undefined}
+                    backHref={backHref}
                 />
             </div>
         </>

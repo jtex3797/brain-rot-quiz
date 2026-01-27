@@ -24,6 +24,7 @@ interface QuizPlayerProps {
   isLoadingMore?: boolean;
   remainingCount?: number;
   onResetAll?: () => Promise<void>;
+  backHref?: string;
 }
 
 export function QuizPlayer({
@@ -33,6 +34,7 @@ export function QuizPlayer({
   isLoadingMore = false,
   remainingCount,
   onResetAll,
+  backHref,
 }: QuizPlayerProps) {
   const totalQuestions = quiz.questions.length;
 
@@ -130,6 +132,7 @@ export function QuizPlayer({
         isLoadingMore={isLoadingMore}
         onResetAll={onResetAll}
         sessionSize={quiz.sessionSize ?? quiz.requestedQuestionCount}
+        backHref={backHref}
       />
     );
   }
