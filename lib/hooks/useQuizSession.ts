@@ -9,7 +9,7 @@ import {
   calculateXP,
   type SessionResult,
 } from '@/lib/supabase/session';
-import type { UserAnswer } from '@/types';
+import type { UserAnswer, Question } from '@/types';
 
 interface UseQuizSessionReturn {
   isSubmitting: boolean;
@@ -18,7 +18,9 @@ interface UseQuizSessionReturn {
     quizId: string | null,
     answers: UserAnswer[],
     maxCombo: number,
-    questionIdMap?: Map<string, string>
+    questionIdMap?: Map<string, string>,
+    quizTitle?: string,
+    questions?: Question[]
   ) => Promise<SessionResult | null>;
   calculatePreviewXP: (
     correctCount: number,
@@ -40,7 +42,9 @@ export function useQuizSession(): UseQuizSessionReturn {
       quizId: string | null,
       answers: UserAnswer[],
       maxCombo: number,
-      questionIdMap?: Map<string, string>
+      questionIdMap?: Map<string, string>,
+      quizTitle?: string,
+      questions?: Question[]
     ): Promise<SessionResult | null> => {
       // 비로그인 시 저장 안 함
       if (!user) {
@@ -55,7 +59,9 @@ export function useQuizSession(): UseQuizSessionReturn {
           quizId,
           answers,
           maxCombo,
-          questionIdMap
+          questionIdMap,
+          quizTitle,
+          questions
         );
         setSessionResult(result);
 

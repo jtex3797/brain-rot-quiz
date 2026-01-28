@@ -84,10 +84,12 @@ export function QuizPlayer({
         isDbQuiz ? quiz.id : null,
         answers,
         maxCombo,
-        questionIdMap
+        questionIdMap,
+        isDbQuiz ? quiz.title : undefined, // 오답노트용
+        isDbQuiz ? quiz.questions : undefined // 오답노트용
       );
     }
-  }, [isComplete, isDbQuiz, quiz.id, quiz.questions, answers, maxCombo, submitSession]);
+  }, [isComplete, isDbQuiz, quiz.id, quiz.title, quiz.questions, answers, maxCombo, submitSession]);
 
   const handleAnswer = useCallback(
     (answer: string, isCorrect: boolean, matchResult?: MatchResult) => {

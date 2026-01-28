@@ -3,7 +3,7 @@
 
 import { createClient } from './client';
 import { logger } from '@/lib/utils/logger';
-import type { UserAnswer } from '@/types';
+import type { UserAnswer, Question } from '@/types';
 import type { PlaySessionInsert, PlayAnswerInsert } from '@/types/supabase';
 
 // 세션 완료 결과 타입
@@ -51,6 +51,7 @@ export function calculateXP(
  * 퀴즈 세션 완료 및 저장
  * - play_sessions 테이블에 세션 저장
  * - play_answers 테이블에 답변 저장 (DB 퀴즈인 경우)
+ * - wrong_answers 테이블에 오답 저장 (DB 퀴즈인 경우)
  * - add_xp RPC로 XP 추가 및 레벨 업데이트
  * - update_streak RPC로 스트릭 업데이트
  * - increment_profile_stats RPC로 통계 업데이트
@@ -60,7 +61,9 @@ export async function completeQuizSession(
   quizId: string | null, // null = localStorage 전용 퀴즈
   answers: UserAnswer[],
   maxCombo: number,
-  questionIdMap?: Map<string, string> // 프론트 questionId -> DB questionId
+  questionIdMap?: Map<string, string>, // 프론트 questionId -> DB questionId
+  quizTitle?: string, // 오답노트용
+  questions?: Question[] // 오답노트용
 ): Promise<SessionResult> {
   const supabase = createClient() as any;
 
@@ -129,6 +132,73 @@ export async function completeQuizSession(
           sessionId: session.id,
           answerCount: answersData.length,
         });
+      }
+    }
+
+    // 2-1. 오답 저장 (wrong_answers 테이블)
+    if (quizTitle && questions) {
+      const wrongAnswers = answers.filter((a) => !a.isCorrect);
+      const questionsMap = new Map(questions.map((q) => [q.id, q]));
+
+      for (const wrongAnswer of wrongAnswers) {
+        const question = questionsMap.get(wrongAnswer.questionId);
+        const dbQuestionId = questionIdMap.get(wrongAnswer.questionId);
+
+        if (question && dbQuestionId) {
+          const snapshot = {
+            type: question.type,
+            questionText: question.questionText,
+            options: question.options,
+            correctAnswers: question.correctAnswers,
+            explanation: question.explanation,
+          };
+
+          // UPSERT: 이미 오답이 있으면 wrong_count 증가
+          const { error: wrongError } = await supabase
+            .from('wrong_answers')
+            .upsert(
+              {
+                user_id: userId,
+                quiz_id: quizId,
+                question_id: dbQuestionId,
+                quiz_title: quizTitle,
+                question_snapshot: snapshot,
+                user_answer: wrongAnswer.userAnswer,
+                wrong_count: 1,
+                is_outdated: false,
+                is_resolved: false,
+                last_wrong_at: new Date().toISOString(),
+              },
+              {
+                onConflict: 'user_id,question_id',
+              }
+            );
+
+          if (wrongError) {
+            logger.error('Supabase', '오답 저장 실패', {
+              error: wrongError.message,
+              questionId: dbQuestionId,
+            });
+          }
+        }
+      }
+
+      // 정답 맞춘 문제 중 기존 오답이 있으면 resolved 처리
+      const correctAnswers = answers.filter((a) => a.isCorrect);
+      const correctQuestionIds = correctAnswers
+        .map((a) => questionIdMap.get(a.questionId))
+        .filter(Boolean) as string[];
+
+      if (correctQuestionIds.length > 0) {
+        await supabase
+          .from('wrong_answers')
+          .update({
+            is_resolved: true,
+            resolved_at: new Date().toISOString(),
+          })
+          .eq('user_id', userId)
+          .in('question_id', correctQuestionIds)
+          .eq('is_resolved', false);
       }
     }
   }
