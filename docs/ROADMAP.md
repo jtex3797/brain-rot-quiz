@@ -1,6 +1,6 @@
 # BrainRotQuiz 개발 로드맵
 
-> **최종 수정일**: 2026-01-27
+> **최종 수정일**: 2026-01-28
 
 이 문서는 기능별 구현 상태와 개발 우선순위를 추적합니다.
 
@@ -108,7 +108,7 @@
 | PWA | :x: | 오프라인 지원 | - |
 | 프로필 페이지 | :white_check_mark: | /profile 에서 통계 표시 | `app/profile/page.tsx` |
 | 학습 통계 | :white_check_mark: | 프로필 대시보드 (정답률, 스트릭 등) | `app/profile/page.tsx` |
-| 유사 정답 매칭 | :x: | Fuzzy Matching, 오타 허용 | - |
+| 유사 정답 매칭 | :white_check_mark: | Fuzzy Matching, 오타 허용 (구현 완료) | `lib/quiz/answerMatcher.ts` |
 | 오류 신고 | :x: | 퀴즈 오류 피드백 | - |
 
 ---
@@ -161,3 +161,4 @@
 | 2026-01-24 | 문제 풀(Question Pool) 시스템 기획 추가 (Phase 1 보강) |
 | 2026-01-26 | 문제 은행(Question Bank) 구현 완료 및 UI/UX 개선 (다크모드, 헤더, 통계) |
 | 2026-01-27 | 진입 경로 기반 동적 네비게이션 적용 및 레이아웃 안정화 (컴포넌트 리마운트 버그 수정) |
+164: | 2026-01-28 | 유사 정답 매칭 및 다중 정답 기능 구현 완료 (Phase 6 완료) |
