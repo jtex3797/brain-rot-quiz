@@ -16,6 +16,7 @@ import {
   useQuizSession,
 } from '@/lib/hooks';
 import type { Quiz } from '@/types';
+import type { MatchResult } from '@/lib/quiz/answerMatcher';
 
 interface QuizPlayerProps {
   quiz: Quiz;
@@ -89,12 +90,12 @@ export function QuizPlayer({
   }, [isComplete, isDbQuiz, quiz.id, quiz.questions, answers, maxCombo, submitSession]);
 
   const handleAnswer = useCallback(
-    (answer: string, isCorrect: boolean) => {
+    (answer: string, isCorrect: boolean, matchResult?: MatchResult) => {
       // currentQuestion이 없으면 무시 (더 풀기 로딩 중 방지)
       if (!currentQuestion) return;
 
       // 답변 기록
-      recordAnswer(currentQuestion.id, answer, isCorrect);
+      recordAnswer(currentQuestion.id, answer, isCorrect, matchResult?.matchType, matchResult?.similarity);
 
       // 콤보 처리
       if (isCorrect) {

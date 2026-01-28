@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
             type: q.type,
             question_text: q.questionText,
             options: q.options ?? null,
-            correct_answer: q.correctAnswer,
+            correct_answers: q.correctAnswers,
             explanation: q.explanation ?? null,
             order_index: index,
         }));

@@ -17,7 +17,7 @@ export interface Question {
   type: QuizType;
   questionText: string;
   options?: string[]; // 객관식인 경우에만 존재
-  correctAnswer: string;
+  correctAnswers: string[]; // [0] = 대표 정답, [1...] = 대안 정답
   explanation?: string;
 }
 
@@ -44,6 +44,8 @@ export interface UserAnswer {
   userAnswer: string;
   isCorrect: boolean;
   timeSpentMs: number;
+  matchType?: 'exact' | 'similar' | 'wrong';
+  similarity?: number;
 }
 
 /**

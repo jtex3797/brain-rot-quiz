@@ -13,7 +13,7 @@ export const QuizSchema = z.object({
       type: z.enum(['mcq', 'ox', 'short', 'fill']).describe('문제 유형'),
       questionText: z.string().describe('문제 텍스트 (빈칸은 [____]로 표시)'),
       options: z.array(z.string()).optional().describe('객관식 보기 (4개)'),
-      correctAnswer: z.string().describe('정답'),
+      correctAnswers: z.array(z.string()).min(1).describe('정답 목록 (첫 번째가 대표 정답, 나머지는 대안)'),
       explanation: z.string().optional().describe('해설'),
     })
   ),
@@ -51,7 +51,7 @@ export const SYSTEM_PROMPT = `당신은 교육 전문가이자 퀴즈 생성 AI�
    - 참/거짓 판단 문제
    - 문장 자체가 명제 형태
    - options: ["O", "X"]
-   - correctAnswer: "O" 또는 "X"
+   - correctAnswers: ["O"] 또는 ["X"]
 
    **단답형 (short):**
    - options 없음
@@ -61,6 +61,12 @@ export const SYSTEM_PROMPT = `당신은 교육 전문가이자 퀴즈 생성 AI�
    - 문제는 명확하고 모호하지 않아야 함
    - 난이도는 사용자 요청에 맞춤
    - 해설은 간결하고 이해하기 쉽게
+
+5. **정답 (correctAnswers)**
+   - 배열 형태로 제공, 첫 번째가 대표 정답
+   - 단답형/빈칸: 한글↔영문, 약칭 등 대안 정답 추가 (예: ["대한민국", "한국", "Korea"])
+   - 객관식: 정답 1개만 (예: ["정답보기"])
+   - OX: 정답 1개만 (["O"] 또는 ["X"])
 
 **출력 형식:**
 JSON 형식으로 반환하며, 반드시 주어진 스키마를 따라야 합니다.`;

@@ -5,7 +5,13 @@ interface UseQuizAnswersReturn {
   answers: UserAnswer[];
   correctCount: number;
   wrongAnswers: UserAnswer[];
-  recordAnswer: (questionId: string, answer: string, isCorrect: boolean) => void;
+  recordAnswer: (
+    questionId: string,
+    answer: string,
+    isCorrect: boolean,
+    matchType?: 'exact' | 'similar' | 'wrong',
+    similarity?: number
+  ) => void;
   reset: () => void;
 }
 
@@ -27,12 +33,20 @@ export function useQuizAnswers(): UseQuizAnswersReturn {
   }, [answers]);
 
   const recordAnswer = useCallback(
-    (questionId: string, answer: string, isCorrect: boolean) => {
+    (
+      questionId: string,
+      answer: string,
+      isCorrect: boolean,
+      matchType?: 'exact' | 'similar' | 'wrong',
+      similarity?: number
+    ) => {
       const userAnswer: UserAnswer = {
         questionId,
         userAnswer: answer,
         isCorrect,
         timeSpentMs: 0,
+        matchType,
+        similarity,
       };
       setAnswers((prev) => [...prev, userAnswer]);
     },

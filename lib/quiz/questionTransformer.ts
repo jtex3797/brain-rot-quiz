@@ -62,7 +62,7 @@ function isDuplicateQuestion(
       return true;
     }
     // 정답이 같으면 중복으로 처리
-    if (newQuestion.correctAnswer === existing.correctAnswer) {
+    if (newQuestion.correctAnswers[0] === existing.correctAnswers[0]) {
       return true;
     }
   }
@@ -84,7 +84,7 @@ function transformSwapAnswer(question: Question): TransformedQuestion | null {
 
   // 오답 중 하나를 새 정답으로 선택
   const incorrectOptions = question.options.filter(
-    (opt) => opt !== question.correctAnswer
+    (opt) => !question.correctAnswers.includes(opt)
   );
 
   if (incorrectOptions.length === 0) return null;
@@ -129,8 +129,8 @@ function transformSwapAnswer(question: Question): TransformedQuestion | null {
     type: 'mcq',
     questionText: newQuestionText,
     options: question.options,
-    correctAnswer: newCorrectAnswer,
-    explanation: `원래 정답: ${question.correctAnswer}. ${question.explanation || ''}`,
+    correctAnswers: [newCorrectAnswer],
+    explanation: `원래 정답: ${question.correctAnswers[0]}. ${question.explanation || ''}`,
     transformType: 'swap_answer',
     originalId: question.id,
   };
@@ -150,14 +150,14 @@ function transformShiftBlank(question: Question): TransformedQuestion | null {
   // 원래 정답으로 빈칸 채우기
   const filledText = question.questionText.replace(
     blankPattern,
-    question.correctAnswer
+    question.correctAnswers[0]
   );
 
   // 문장에서 다른 키워드 추출
   const tokens = tokenize(filledText);
   // 2글자 이상, 숫자가 아닌 토큰만 선택
   const keywords = tokens.filter(
-    (t) => t.length >= 2 && !/^\d+$/.test(t) && t !== question.correctAnswer
+    (t) => t.length >= 2 && !/^\d+$/.test(t) && t !== question.correctAnswers[0]
   );
 
   if (keywords.length === 0) return null;
@@ -172,8 +172,8 @@ function transformShiftBlank(question: Question): TransformedQuestion | null {
     id: `${question.id}_shift`,
     type: 'fill',
     questionText: newText,
-    correctAnswer: newBlankKeyword,
-    explanation: `변형 문제. 원래 빈칸: ${question.correctAnswer}`,
+    correctAnswers: [newBlankKeyword],
+    explanation: `변형 문제. 원래 빈칸: ${question.correctAnswers[0]}`,
     transformType: 'shift_blank',
     originalId: question.id,
   };
@@ -217,15 +217,15 @@ function transformNegate(question: Question): TransformedQuestion | null {
   if (!transformed) return null;
 
   // 정답 반전
-  const newCorrectAnswer = question.correctAnswer === 'O' ? 'X' : 'O';
+  const newCorrectAnswer = question.correctAnswers[0] === 'O' ? 'X' : 'O';
 
   return {
     id: `${question.id}_neg`,
     type: 'ox',
     questionText: newText,
     options: ['O', 'X'],
-    correctAnswer: newCorrectAnswer,
-    explanation: `부정형 변환. 원래 답: ${question.correctAnswer}`,
+    correctAnswers: [newCorrectAnswer],
+    explanation: `부정형 변환. 원래 답: ${question.correctAnswers[0]}`,
     transformType: 'negate',
     originalId: question.id,
   };
@@ -253,7 +253,7 @@ function transformShuffleOptions(question: Question): TransformedQuestion | null
     type: 'mcq',
     questionText: question.questionText,
     options: shuffledOptions,
-    correctAnswer: question.correctAnswer,
+    correctAnswers: question.correctAnswers,
     explanation: question.explanation,
     transformType: 'shuffle_options',
     originalId: question.id,
@@ -270,7 +270,7 @@ function transformMcqToOx(question: Question): TransformedQuestion[] {
 
   // 각 보기에 대해 OX 문제 생성
   for (const option of question.options) {
-    const isCorrect = option === question.correctAnswer;
+    const isCorrect = question.correctAnswers.includes(option);
 
     // 질문 형태로 변환
     let statement = question.questionText;
@@ -289,7 +289,7 @@ function transformMcqToOx(question: Question): TransformedQuestion[] {
       type: 'ox',
       questionText: statement,
       options: ['O', 'X'],
-      correctAnswer: isCorrect ? 'O' : 'X',
+      correctAnswers: [isCorrect ? 'O' : 'X'],
       explanation: question.explanation,
       transformType: 'mcq_to_ox',
       originalId: question.id,

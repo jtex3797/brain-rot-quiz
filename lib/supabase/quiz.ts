@@ -50,7 +50,7 @@ export function toDbQuestions(
     type: q.type,
     question_text: q.questionText,
     options: q.options ?? null,
-    correct_answer: q.correctAnswer,
+    correct_answers: q.correctAnswers,
     explanation: q.explanation ?? null,
     order_index: index,
   }));
@@ -76,7 +76,7 @@ export function fromDbQuestion(dbQ: DbSavedQuestion): Question {
     type: dbQ.type,
     questionText: dbQ.question_text,
     options: dbQ.options as string[] | undefined,
-    correctAnswer: dbQ.correct_answer,
+    correctAnswers: dbQ.correct_answers,
     explanation: dbQ.explanation ?? undefined,
   };
 }

@@ -4,13 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { OptionButton, OptionState } from './OptionButton';
 import { useQuizSound } from '@/lib/hooks';
+import { checkAnswer, type MatchResult } from '@/lib/quiz/answerMatcher';
 import type { Question } from '@/types';
 
 interface QuestionCardProps {
   question: Question;
   questionNumber: number;
   totalQuestions: number;
-  onAnswer: (answer: string, isCorrect: boolean) => void;
+  onAnswer: (answer: string, isCorrect: boolean, matchResult?: MatchResult) => void;
   disabled: boolean;
   autoNext: boolean;
 }
@@ -26,6 +27,7 @@ export function QuestionCard({
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [shortAnswer, setShortAnswer] = useState('');
+  const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { playCorrect, playWrong } = useQuizSound();
 
@@ -45,10 +47,11 @@ export function QuestionCard({
     setSelectedAnswer(option);
     setShowResult(true);
 
-    const isCorrect = option === question.correctAnswer;
+    const result = checkAnswer(option, question.correctAnswers, question.type);
+    setMatchResult(result);
 
     // 사운드 재생
-    if (isCorrect) {
+    if (result.isCorrect) {
       playCorrect();
     } else {
       playWrong();
@@ -57,7 +60,7 @@ export function QuestionCard({
     // 자동 넘김 모드일 때만 1.5초 후 다음 문제로
     if (autoNext) {
       timeoutRef.current = setTimeout(() => {
-        onAnswer(option, isCorrect);
+        onAnswer(option, result.isCorrect, result);
       }, 1500);
     }
   };
@@ -68,11 +71,11 @@ export function QuestionCard({
     setSelectedAnswer(shortAnswer.trim());
     setShowResult(true);
 
-    // 대소문자 무시하고 비교
-    const isCorrect = shortAnswer.trim().toLowerCase() === question.correctAnswer.toLowerCase();
+    const result = checkAnswer(shortAnswer.trim(), question.correctAnswers, question.type);
+    setMatchResult(result);
 
     // 사운드 재생
-    if (isCorrect) {
+    if (result.isCorrect) {
       playCorrect();
     } else {
       playWrong();
@@ -81,7 +84,7 @@ export function QuestionCard({
     // 자동 넘김 모드일 때만 1.5초 후 다음 문제로
     if (autoNext) {
       timeoutRef.current = setTimeout(() => {
-        onAnswer(shortAnswer.trim(), isCorrect);
+        onAnswer(shortAnswer.trim(), result.isCorrect, result);
       }, 1500);
     }
   };
@@ -91,7 +94,7 @@ export function QuestionCard({
       return selectedAnswer === option ? 'selected' : 'default';
     }
 
-    if (option === question.correctAnswer) {
+    if (question.correctAnswers.includes(option)) {
       return selectedAnswer === option ? 'correct' : 'reveal';
     }
 
@@ -102,10 +105,7 @@ export function QuestionCard({
     return 'default';
   };
 
-  // 단답형의 경우 대소문자 무시 비교
-  const isCorrectAnswer = question.type === 'short' || question.type === 'fill'
-    ? selectedAnswer?.toLowerCase() === question.correctAnswer.toLowerCase()
-    : selectedAnswer === question.correctAnswer;
+  const isCorrectAnswer = matchResult?.isCorrect ?? false;
 
   return (
     <motion.div
@@ -176,7 +176,7 @@ export function QuestionCard({
       )}
 
       {/* 정답/오답 피드백 */}
-      {showResult && (
+      {showResult && matchResult && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -192,11 +192,20 @@ export function QuestionCard({
             </span>
             <div>
               <p className={`font-bold ${isCorrectAnswer ? 'text-success' : 'text-error'}`}>
-                {isCorrectAnswer ? '정답입니다!' : '아쉽네요!'}
+                {matchResult.matchType === 'exact'
+                  ? '정답입니다!'
+                  : matchResult.matchType === 'similar'
+                    ? `유사 정답입니다! (${Math.round(matchResult.similarity * 100)}% 일치)`
+                    : '아쉽네요!'}
               </p>
+              {matchResult.matchType === 'similar' && (
+                <p className="text-sm text-foreground/70 mt-1">
+                  대표 정답: <span className="font-medium text-success">{matchResult.displayAnswer}</span>
+                </p>
+              )}
               {!isCorrectAnswer && (
                 <p className="text-sm text-foreground/70 mt-1">
-                  정답: <span className="font-medium text-success">{question.correctAnswer}</span>
+                  정답: <span className="font-medium text-success">{matchResult.displayAnswer}</span>
                 </p>
               )}
             </div>
@@ -210,7 +219,7 @@ export function QuestionCard({
           {/* 수동 모드일 때 다음 문제 버튼 */}
           {!autoNext && (
             <button
-              onClick={() => onAnswer(selectedAnswer!, isCorrectAnswer)}
+              onClick={() => onAnswer(selectedAnswer!, matchResult.isCorrect, matchResult)}
               className="mt-4 w-full rounded-xl bg-primary p-3 font-medium text-white transition-colors hover:bg-primary-hover"
             >
               다음 문제 →

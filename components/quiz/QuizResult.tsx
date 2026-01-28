@@ -210,7 +210,7 @@ export function QuizResult({
                         내 답: {answer.userAnswer}
                       </span>
                       <span className="text-success">
-                        정답: {question.correctAnswer}
+                        정답: {question.correctAnswers[0]}
                       </span>
                     </div>
                     {question.explanation && (

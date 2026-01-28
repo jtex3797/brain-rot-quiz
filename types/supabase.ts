@@ -107,7 +107,7 @@ export interface Database {
           type: 'mcq' | 'ox' | 'short' | 'fill';
           question_text: string;
           options: Json | null;
-          correct_answer: string;
+          correct_answers: string[];
           explanation: string | null;
           order_index: number;
           created_at: string;
@@ -118,7 +118,7 @@ export interface Database {
           type: 'mcq' | 'ox' | 'short' | 'fill';
           question_text: string;
           options?: Json | null;
-          correct_answer: string;
+          correct_answers: string[];
           explanation?: string | null;
           order_index: number;
           created_at?: string;
@@ -129,7 +129,7 @@ export interface Database {
           type?: 'mcq' | 'ox' | 'short' | 'fill';
           question_text?: string;
           options?: Json | null;
-          correct_answer?: string;
+          correct_answers?: string[];
           explanation?: string | null;
           order_index?: number;
           created_at?: string;

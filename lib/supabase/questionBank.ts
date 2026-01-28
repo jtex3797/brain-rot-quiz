@@ -45,7 +45,7 @@ export function fromDbBankQuestion(dbQ: DbQuestionBankItem): Question {
     type: json.type,
     questionText: json.questionText,
     options: json.options,
-    correctAnswer: json.correctAnswer,
+    correctAnswers: json.correctAnswers ?? (json.correctAnswer ? [json.correctAnswer] : []),
     explanation: json.explanation,
   };
 }
@@ -64,7 +64,7 @@ export function toDbBankQuestion(
       type: question.type,
       questionText: question.questionText,
       options: question.options,
-      correctAnswer: question.correctAnswer,
+      correctAnswers: question.correctAnswers,
       explanation: question.explanation,
     },
     source_type: sourceType,

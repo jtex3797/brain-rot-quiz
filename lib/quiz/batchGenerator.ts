@@ -66,7 +66,7 @@ function removeDuplicateQuestions(
       }
       // 정답이 같고 문제 유형도 같으면 중복으로 처리
       if (
-        q.correctAnswer === existing.correctAnswer &&
+        q.correctAnswers[0] === existing.correctAnswers[0] &&
         q.type === existing.type
       ) {
         isDuplicate = true;
@@ -123,8 +123,8 @@ function extractTopics(questions: Question[]): string[] {
     topics.push(...tokens.slice(0, 3)); // 상위 3개 키워드
 
     // 정답도 토픽에 추가
-    if (q.correctAnswer) {
-      topics.push(q.correctAnswer);
+    if (q.correctAnswers && q.correctAnswers.length > 0) {
+      topics.push(q.correctAnswers[0]);
     }
   }
 

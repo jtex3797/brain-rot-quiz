@@ -175,7 +175,7 @@ export async function generateQuizWithFallback(
           .slice(0, options.questionCount) // 요청한 개수만큼 자르기
           .map((q) => ({
             ...q,
-            correctAnswer: q.correctAnswer,
+            correctAnswers: q.correctAnswers,
           })),
         createdAt: new Date(),
       };
@@ -290,9 +290,9 @@ export function normalizeQuiz(quiz: Quiz): Quiz {
         // OX 문제의 options 강제 설정
         const normalizedOptions = ['O', 'X'];
 
-        // correctAnswer 정규화 (다양한 형식 처리)
-        let normalizedAnswer = q.correctAnswer;
-        const answerLower = q.correctAnswer.toLowerCase().trim();
+        // correctAnswers[0] 정규화 (다양한 형식 처리)
+        let normalizedAnswer = q.correctAnswers[0];
+        const answerLower = normalizedAnswer.toLowerCase().trim();
         if (answerLower === 'true' || answerLower === '참' || answerLower === 'o') {
           normalizedAnswer = 'O';
         } else if (answerLower === 'false' || answerLower === '거짓' || answerLower === 'x') {
@@ -302,7 +302,7 @@ export function normalizeQuiz(quiz: Quiz): Quiz {
         return {
           ...q,
           options: normalizedOptions,
-          correctAnswer: normalizedAnswer,
+          correctAnswers: [normalizedAnswer],
         };
       }
       return q;
@@ -329,7 +329,7 @@ export function validateQuiz(quiz: Quiz): { valid: boolean; errors: string[] } {
       errors.push(`문제 ${index + 1}: 문제 텍스트가 없습니다`);
     }
 
-    if (!q.correctAnswer || q.correctAnswer.trim().length === 0) {
+    if (!q.correctAnswers || q.correctAnswers.length === 0 || q.correctAnswers[0].trim().length === 0) {
       errors.push(`문제 ${index + 1}: 정답이 없습니다`);
     }
 
