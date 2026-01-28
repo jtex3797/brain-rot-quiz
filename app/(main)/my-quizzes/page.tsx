@@ -201,6 +201,13 @@ export default function MyQuizzesPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => router.push(`/quiz-edit/${quiz.id}`)}
+                    >
+                      수정
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleDelete(quiz.id)}
                       disabled={deletingId === quiz.id}
                     >

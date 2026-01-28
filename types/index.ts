@@ -180,3 +180,29 @@ export interface QuestionPoolResult {
     generationTimeMs: number;
   };
 }
+
+// ============================================
+// Phase 4: 퀴즈 수정 관련 타입
+// ============================================
+
+/**
+ * 문제 수정 요청 타입
+ */
+export interface QuestionUpdate {
+  id?: string; // 기존 문제: id 있음, 새 문제: undefined
+  type: QuizType;
+  questionText: string;
+  options?: string[];
+  correctAnswers: string[];
+  explanation?: string;
+  _delete?: boolean; // 삭제 마킹
+}
+
+/**
+ * 퀴즈 수정 요청 타입
+ */
+export interface QuizUpdateRequest {
+  title?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  questions?: QuestionUpdate[];
+}
