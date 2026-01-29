@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,8 +46,29 @@ export default function WrongAnswersPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [showResolved, setShowResolved] = useState(false);
     const [showOutdated, setShowOutdated] = useState(false);
+    const [selectedQuizId, setSelectedQuizId] = useState<string>('all');
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [expandedId, setExpandedId] = useState<string | null>(null);
+
+    // 고유 퀴즈 목록 추출
+    const quizOptions = useMemo(() => {
+        const quizMap = new Map<string, string>();
+        wrongAnswers.forEach((wa) => {
+            if (wa.quiz_id && wa.quiz_title) {
+                quizMap.set(wa.quiz_id, wa.quiz_title);
+            }
+        });
+        return Array.from(quizMap.entries()).map(([id, title]) => ({
+            id,
+            title,
+        }));
+    }, [wrongAnswers]);
+
+    // 필터링된 오답 목록
+    const filteredWrongAnswers = useMemo(() => {
+        if (selectedQuizId === 'all') return wrongAnswers;
+        return wrongAnswers.filter((wa) => wa.quiz_id === selectedQuizId);
+    }, [wrongAnswers, selectedQuizId]);
 
     // 오답 목록 로드
     useEffect(() => {
@@ -133,12 +154,47 @@ export default function WrongAnswersPage() {
         <PageContainer>
             <PageHeader
                 title="오답노트"
-                description={`총 ${wrongAnswers.length}개의 오답`}
+                description={`총 ${filteredWrongAnswers.length}개의 오답`}
                 backHref="/"
             />
 
+            {/* 오답 복습하기 버튼 */}
+            {filteredWrongAnswers.length > 0 && (
+                <div className="mb-6">
+                    <Button
+                        variant="primary"
+                        onClick={() => {
+                            const quizParam = selectedQuizId !== 'all' ? `?quizId=${selectedQuizId}` : '';
+                            router.push(`/wrong-review${quizParam}`);
+                        }}
+                    >
+                        오답 복습하기 ({filteredWrongAnswers.length}문제)
+                    </Button>
+                </div>
+            )}
+
             {/* 필터 옵션 */}
-            <div className="flex gap-4 mb-6">
+            <div className="flex flex-wrap gap-4 mb-6">
+                {/* 퀴즈 선택 드롭다운 */}
+                <div className="flex items-center gap-2">
+                    <label htmlFor="quiz-filter" className="text-sm">
+                        퀴즈:
+                    </label>
+                    <select
+                        id="quiz-filter"
+                        value={selectedQuizId}
+                        onChange={(e) => setSelectedQuizId(e.target.value)}
+                        className="px-3 py-1.5 text-sm rounded-md border border-border bg-background"
+                    >
+                        <option value="all">전체 ({wrongAnswers.length})</option>
+                        {quizOptions.map((quiz) => (
+                            <option key={quiz.id} value={quiz.id}>
+                                {quiz.title} ({wrongAnswers.filter((wa) => wa.quiz_id === quiz.id).length})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
                 <label className="flex items-center gap-2 cursor-pointer">
                     <input
                         type="checkbox"
@@ -160,7 +216,7 @@ export default function WrongAnswersPage() {
             </div>
 
             {/* 빈 상태 */}
-            {wrongAnswers.length === 0 && (
+            {filteredWrongAnswers.length === 0 && (
                 <Card>
                     <CardContent className="py-12 text-center">
                         <p className="text-foreground/70 mb-4">
@@ -175,7 +231,7 @@ export default function WrongAnswersPage() {
 
             {/* 오답 목록 */}
             <div className="space-y-4">
-                {wrongAnswers.map((wrong) => {
+                {filteredWrongAnswers.map((wrong) => {
                     const isExpanded = expandedId === wrong.id;
                     const snapshot = wrong.question_snapshot;
 

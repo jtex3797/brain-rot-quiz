@@ -1,6 +1,6 @@
 import { createClient } from './server';
 import { logger } from '@/lib/utils/logger';
-import type { Question } from '@/types';
+import type { Question, QuizType } from '@/types';
 
 /**
  * 오답 스냅샷 타입
@@ -284,5 +284,64 @@ export async function deleteWrongAnswer(
             error: error instanceof Error ? error.message : String(error),
         });
         return { success: false };
+    }
+}
+
+/**
+ * 오답 복습용 결과 타입
+ */
+export interface WrongAnswersQuizResult {
+    questions: Question[];
+    questionIdMap: Record<string, string>; // frontendId -> dbQuestionId
+}
+
+/**
+ * 오답을 Question[] 형식으로 변환하여 반환 (오답 복습용)
+ * questionIdMap도 함께 반환하여 resolved 처리에 활용
+ */
+export async function getWrongAnswersAsQuestions(
+    userId: string,
+    options?: {
+        quizId?: string;
+        limit?: number;
+    }
+): Promise<WrongAnswersQuizResult> {
+    try {
+        const wrongAnswers = await getWrongAnswers(userId, {
+            includeResolved: false,
+            includeOutdated: false,
+            limit: options?.limit,
+        });
+
+        // 퀴즈별 필터링
+        const filtered = options?.quizId
+            ? wrongAnswers.filter((wa) => wa.quizId === options.quizId)
+            : wrongAnswers;
+
+        const questionIdMap: Record<string, string> = {};
+
+        // QuestionSnapshot → Question 변환
+        const questions = filtered.map((wa) => {
+            const frontendId = wa.questionId || `wrong-${wa.id}`;
+            // DB questionId가 있으면 매핑 저장 (resolved 처리용)
+            if (wa.questionId) {
+                questionIdMap[frontendId] = wa.questionId;
+            }
+            return {
+                id: frontendId,
+                type: wa.questionSnapshot.type as QuizType,
+                questionText: wa.questionSnapshot.questionText,
+                options: wa.questionSnapshot.options,
+                correctAnswers: wa.questionSnapshot.correctAnswers,
+                explanation: wa.questionSnapshot.explanation,
+            };
+        });
+
+        return { questions, questionIdMap };
+    } catch (error) {
+        logger.error('WrongAnswers', '오답→Question 변환 중 예외', {
+            error: error instanceof Error ? error.message : String(error),
+        });
+        return { questions: [], questionIdMap: {} };
     }
 }

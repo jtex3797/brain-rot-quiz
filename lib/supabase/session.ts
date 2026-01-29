@@ -183,22 +183,37 @@ export async function completeQuizSession(
         }
       }
 
-      // 정답 맞춘 문제 중 기존 오답이 있으면 resolved 처리
-      const correctAnswers = answers.filter((a) => a.isCorrect);
-      const correctQuestionIds = correctAnswers
-        .map((a) => questionIdMap.get(a.questionId))
-        .filter(Boolean) as string[];
+    }
+  }
 
-      if (correctQuestionIds.length > 0) {
-        await supabase
-          .from('wrong_answers')
-          .update({
-            is_resolved: true,
-            resolved_at: new Date().toISOString(),
-          })
-          .eq('user_id', userId)
-          .in('question_id', correctQuestionIds)
-          .eq('is_resolved', false);
+  // 2-2. 정답 맞춘 문제 중 기존 오답이 있으면 resolved 처리
+  // (오답 복습 시에도 quizId 없이 questionIdMap만으로 resolved 처리)
+  if (questionIdMap && questionIdMap.size > 0) {
+    const correctAnswers = answers.filter((a) => a.isCorrect);
+    const correctQuestionIds = correctAnswers
+      .map((a) => questionIdMap.get(a.questionId))
+      .filter(Boolean) as string[];
+
+    if (correctQuestionIds.length > 0) {
+      const { error: resolveError } = await supabase
+        .from('wrong_answers')
+        .update({
+          is_resolved: true,
+          resolved_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId)
+        .in('question_id', correctQuestionIds)
+        .eq('is_resolved', false);
+
+      if (resolveError) {
+        logger.error('Supabase', '오답 resolved 처리 실패', {
+          error: resolveError.message,
+          questionIds: correctQuestionIds,
+        });
+      } else {
+        logger.debug('Supabase', '오답 resolved 처리 완료', {
+          count: correctQuestionIds.length,
+        });
       }
     }
   }

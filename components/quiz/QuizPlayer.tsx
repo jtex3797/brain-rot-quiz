@@ -23,6 +23,7 @@ interface QuizPlayerProps {
   quiz: Quiz;
   isDbQuiz?: boolean;
   quizOwnerId?: string;  // 퀴즈 소유자 ID (플레이 중 수정용)
+  externalQuestionIdMap?: Record<string, string>;  // 외부에서 전달하는 questionId 매핑 (오답 복습용)
   onLoadMore?: (count: number) => Promise<void>;
   isLoadingMore?: boolean;
   remainingCount?: number;
@@ -35,6 +36,7 @@ export function QuizPlayer({
   quiz,
   isDbQuiz = false,
   quizOwnerId,
+  externalQuestionIdMap,
   onLoadMore,
   isLoadingMore = false,
   remainingCount,
@@ -106,21 +108,30 @@ export function QuizPlayer({
     if (isComplete && !sessionSubmittedRef.current) {
       sessionSubmittedRef.current = true;
 
-      // DB 퀴즈인 경우 questionId 매핑 생성
-      const questionIdMap = isDbQuiz
-        ? new Map(localQuestions.map((q) => [q.id, q.id]))
-        : undefined;
+      // questionId 매핑 생성
+      // 1. 외부에서 전달된 매핑이 있으면 사용 (오답 복습용)
+      // 2. DB 퀴즈인 경우 자체 생성
+      // 3. 그 외에는 undefined
+      let questionIdMap: Map<string, string> | undefined;
+      if (externalQuestionIdMap && Object.keys(externalQuestionIdMap).length > 0) {
+        questionIdMap = new Map(Object.entries(externalQuestionIdMap));
+      } else if (isDbQuiz) {
+        questionIdMap = new Map(localQuestions.map((q) => [q.id, q.id]));
+      }
+
+      // 오답 복습용일 때도 resolved 처리를 위해 questionIdMap 전달
+      const hasQuestionIdMap = questionIdMap && questionIdMap.size > 0;
 
       submitSession(
         isDbQuiz ? quiz.id : null,
         answers,
         maxCombo,
         questionIdMap,
-        isDbQuiz ? quiz.title : undefined, // 오답노트용
-        isDbQuiz ? localQuestions : undefined // 오답노트용
+        (isDbQuiz || hasQuestionIdMap) ? quiz.title : undefined, // 오답노트용
+        (isDbQuiz || hasQuestionIdMap) ? localQuestions : undefined // 오답노트용
       );
     }
-  }, [isComplete, isDbQuiz, quiz.id, quiz.title, localQuestions, answers, maxCombo, submitSession]);
+  }, [isComplete, isDbQuiz, externalQuestionIdMap, quiz.id, quiz.title, localQuestions, answers, maxCombo, submitSession]);
 
   const handleAnswer = useCallback(
     (answer: string, isCorrect: boolean, matchResult?: MatchResult) => {
