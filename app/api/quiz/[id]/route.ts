@@ -95,7 +95,8 @@ export async function GET(
             quiz.remainingCount = Math.max(0, (count ?? 0) - quiz.questions.length);
         }
 
-        return NextResponse.json({ quiz });
+        // 플레이 중 수정을 위해 소유자 ID도 함께 반환
+        return NextResponse.json({ quiz, ownerId: dbQuiz.user_id });
     } catch (error) {
         logger.error('API', '퀴즈 조회 중 예외', {
             error: error instanceof Error ? error.message : String(error),

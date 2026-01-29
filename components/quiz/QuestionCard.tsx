@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { OptionButton, OptionState } from './OptionButton';
+import { EditQuestionModal } from './EditQuestionModal';
 import { useQuizSound } from '@/lib/hooks';
 import { checkAnswer, type MatchResult } from '@/lib/quiz/answerMatcher';
 import type { Question } from '@/types';
@@ -14,6 +15,10 @@ interface QuestionCardProps {
   onAnswer: (answer: string, isCorrect: boolean, matchResult?: MatchResult) => void;
   disabled: boolean;
   autoNext: boolean;
+  // 플레이 중 수정 관련
+  canEdit?: boolean;
+  quizId?: string;
+  onQuestionUpdate?: (updated: Question) => void;
 }
 
 export function QuestionCard({
@@ -23,13 +28,34 @@ export function QuestionCard({
   onAnswer,
   disabled,
   autoNext,
+  canEdit = false,
+  quizId,
+  onQuestionUpdate,
 }: QuestionCardProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [shortAnswer, setShortAnswer] = useState('');
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { playCorrect, playWrong } = useQuizSound();
+
+  // 편집 모달 열기 (자동 넘김 타이머 중지)
+  const handleOpenEdit = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setShowEditModal(true);
+  };
+
+  // 편집 완료 후 처리
+  const handleQuestionSave = (updated: Question) => {
+    setShowEditModal(false);
+    if (onQuestionUpdate) {
+      onQuestionUpdate(updated);
+    }
+  };
 
   // 컴포넌트 언마운트 시 타이머 정리
   // 참고: 문제가 바뀔 때 상태는 key prop으로 컴포넌트가 새로 마운트되어 자동 초기화됨
@@ -216,16 +242,37 @@ export function QuestionCard({
             </p>
           )}
 
-          {/* 수동 모드일 때 다음 문제 버튼 */}
-          {!autoNext && (
-            <button
-              onClick={() => onAnswer(selectedAnswer!, matchResult.isCorrect, matchResult)}
-              className="mt-4 w-full rounded-xl bg-primary p-3 font-medium text-white transition-colors hover:bg-primary-hover"
-            >
-              다음 문제 →
-            </button>
-          )}
+          {/* 수동 모드일 때 다음 문제 버튼 + 편집 버튼 */}
+          <div className="mt-4 flex gap-2">
+            {canEdit && quizId && (
+              <button
+                onClick={handleOpenEdit}
+                className="flex-1 rounded-xl bg-foreground/10 p-3 font-medium text-foreground transition-colors hover:bg-foreground/20"
+              >
+                문제 수정
+              </button>
+            )}
+            {!autoNext && (
+              <button
+                onClick={() => onAnswer(selectedAnswer!, matchResult.isCorrect, matchResult)}
+                className="flex-1 rounded-xl bg-primary p-3 font-medium text-white transition-colors hover:bg-primary-hover"
+              >
+                다음 문제 →
+              </button>
+            )}
+          </div>
         </motion.div>
+      )}
+
+      {/* 문제 수정 모달 */}
+      {canEdit && quizId && (
+        <EditQuestionModal
+          isOpen={showEditModal}
+          question={question}
+          quizId={quizId}
+          onClose={() => setShowEditModal(false)}
+          onSave={handleQuestionSave}
+        />
       )}
     </motion.div>
   );

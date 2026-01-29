@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { SoundToggle } from '@/components/ui/SoundToggle';
 import { AutoNextToggle } from '@/components/ui/AutoNextToggle';
 import { useAutoNextSettings } from '@/contexts/AutoNextContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { QuestionCard } from './QuestionCard';
 import { QuizResult } from './QuizResult';
 import { ComboDisplay, ComboCounter } from './ComboDisplay';
@@ -15,29 +16,43 @@ import {
   useQuizAnswers,
   useQuizSession,
 } from '@/lib/hooks';
-import type { Quiz } from '@/types';
+import type { Quiz, Question } from '@/types';
 import type { MatchResult } from '@/lib/quiz/answerMatcher';
 
 interface QuizPlayerProps {
   quiz: Quiz;
   isDbQuiz?: boolean;
+  quizOwnerId?: string;  // 퀴즈 소유자 ID (플레이 중 수정용)
   onLoadMore?: (count: number) => Promise<void>;
   isLoadingMore?: boolean;
   remainingCount?: number;
   onResetAll?: () => Promise<void>;
   backHref?: string;
+  onQuizUpdate?: (updatedQuiz: Quiz) => void;  // 퀴즈 수정 시 상위 상태 업데이트
 }
 
 export function QuizPlayer({
   quiz,
   isDbQuiz = false,
+  quizOwnerId,
   onLoadMore,
   isLoadingMore = false,
   remainingCount,
   onResetAll,
   backHref,
+  onQuizUpdate,
 }: QuizPlayerProps) {
-  const totalQuestions = quiz.questions.length;
+  const { user } = useAuth();
+  const [localQuestions, setLocalQuestions] = useState<Question[]>(quiz.questions);
+  const totalQuestions = localQuestions.length;
+
+  // 소유권 확인: DB 퀴즈 + 로그인 + 본인 소유
+  const canEdit = isDbQuiz && !!user && !!quizOwnerId && user.id === quizOwnerId;
+
+  // quiz.questions가 변경되면 로컬 상태 동기화
+  useEffect(() => {
+    setLocalQuestions(quiz.questions);
+  }, [quiz.questions]);
 
   // 커스텀 훅 사용
   const {
@@ -68,7 +83,23 @@ export function QuizPlayer({
   // 세션 제출 여부 추적 (중복 제출 방지)
   const sessionSubmittedRef = useRef(false);
 
-  const currentQuestion = quiz.questions[currentIndex];
+  const currentQuestion = localQuestions[currentIndex];
+
+  // 문제 수정 완료 시 처리
+  const handleQuestionUpdate = useCallback((updated: Question) => {
+    // 로컬 상태 업데이트
+    setLocalQuestions(prev =>
+      prev.map(q => q.id === updated.id ? updated : q)
+    );
+
+    // 상위 컴포넌트에 알림
+    if (onQuizUpdate) {
+      onQuizUpdate({
+        ...quiz,
+        questions: localQuestions.map(q => q.id === updated.id ? updated : q),
+      });
+    }
+  }, [quiz, localQuestions, onQuizUpdate]);
 
   // 퀴즈 완료 시 세션 저장
   useEffect(() => {
@@ -77,7 +108,7 @@ export function QuizPlayer({
 
       // DB 퀴즈인 경우 questionId 매핑 생성
       const questionIdMap = isDbQuiz
-        ? new Map(quiz.questions.map((q) => [q.id, q.id]))
+        ? new Map(localQuestions.map((q) => [q.id, q.id]))
         : undefined;
 
       submitSession(
@@ -86,10 +117,10 @@ export function QuizPlayer({
         maxCombo,
         questionIdMap,
         isDbQuiz ? quiz.title : undefined, // 오답노트용
-        isDbQuiz ? quiz.questions : undefined // 오답노트용
+        isDbQuiz ? localQuestions : undefined // 오답노트용
       );
     }
-  }, [isComplete, isDbQuiz, quiz.id, quiz.title, quiz.questions, answers, maxCombo, submitSession]);
+  }, [isComplete, isDbQuiz, quiz.id, quiz.title, localQuestions, answers, maxCombo, submitSession]);
 
   const handleAnswer = useCallback(
     (answer: string, isCorrect: boolean, matchResult?: MatchResult) => {
@@ -124,7 +155,7 @@ export function QuizPlayer({
     return (
       <QuizResult
         quizTitle={quiz.title}
-        questions={quiz.questions}
+        questions={localQuestions}
         answers={answers}
         maxCombo={maxCombo}
         onRetry={handleRetry}
@@ -192,6 +223,9 @@ export function QuizPlayer({
             onAnswer={handleAnswer}
             disabled={false}
             autoNext={autoNext}
+            canEdit={canEdit}
+            quizId={quiz.id}
+            onQuestionUpdate={handleQuestionUpdate}
           />
         </AnimatePresence>
       </div>

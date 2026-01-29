@@ -20,6 +20,7 @@ export default function QuizPage() {
     const backHref = isFromMyQuiz ? '/my-quizzes' : '/';
     const [quiz, setQuiz] = useState<Quiz | null>(null);
     const [isDbQuiz, setIsDbQuiz] = useState(false);
+    const [quizOwnerId, setQuizOwnerId] = useState<string | undefined>(undefined);
     const [pageState, setPageState] = useState<PageState>('loading');
     const [remainingCount, setRemainingCount] = useState<number | undefined>(undefined);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -56,6 +57,7 @@ export default function QuizPage() {
                             };
                             setQuiz(dbQuiz);
                             setIsDbQuiz(true);
+                            setQuizOwnerId(data.ownerId);  // 플레이 중 수정용
                             setRemainingCount(dbQuiz.remainingCount);
                             setAnsweredQuestionIds(dbQuiz.questions.map((q: Question) => q.id));
 
@@ -330,11 +332,13 @@ export default function QuizPage() {
                     key={quiz.questions[0]?.id ?? quiz.id}
                     quiz={quiz}
                     isDbQuiz={isDbQuiz}
+                    quizOwnerId={quizOwnerId}
                     onLoadMore={quiz.bankId ? handleLoadMore : undefined}
                     isLoadingMore={isLoadingMore}
                     remainingCount={remainingCount}
                     onResetAll={quiz.bankId ? handleResetAll : undefined}
                     backHref={backHref}
+                    onQuizUpdate={setQuiz}
                 />
             </div>
         </>
