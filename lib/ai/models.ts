@@ -13,8 +13,8 @@ import type { AIModel } from '@/types';
  */
 export const AI_MODELS: AIModel[] = [
   {
-    name: 'gemini-2.0-flash-exp',
-    provider: google('gemini-2.0-flash-exp'),
+    name: 'gemini-2.0-flash',
+    provider: google('gemini-2.0-flash'),
     priority: 1,
   },
   {
