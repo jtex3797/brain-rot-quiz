@@ -206,3 +206,8 @@ export interface QuizUpdateRequest {
   difficulty?: 'easy' | 'medium' | 'hard';
   questions?: QuestionUpdate[];
 }
+
+// ============================================
+// Phase 5: 뱃지 관련 타입
+// ============================================
+export * from './badge';

@@ -593,3 +593,143 @@ DROP POLICY IF EXISTS "Users can delete own wrong answers" ON public.wrong_answe
 CREATE POLICY "Users can delete own wrong answers"
   ON public.wrong_answers FOR DELETE
   USING (auth.uid() = user_id);
+
+
+-- =====================================================
+-- 11. badges 테이블 (뱃지 정의)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.badges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  icon TEXT NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('level', 'combo', 'streak', 'quiz_count', 'accuracy', 'special')),
+  tier INTEGER DEFAULT 1 CHECK (tier BETWEEN 1 AND 4),
+  condition_type TEXT NOT NULL,
+  condition_value INTEGER NOT NULL,
+  is_hidden BOOLEAN DEFAULT FALSE NOT NULL,
+  sort_order INTEGER DEFAULT 0 NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_badges_category ON public.badges(category);
+
+ALTER TABLE public.badges ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can view badges" ON public.badges;
+CREATE POLICY "Anyone can view badges"
+  ON public.badges FOR SELECT
+  USING (TRUE);
+
+
+-- =====================================================
+-- 12. user_badges 테이블 (사용자 획득 기록)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.user_badges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE NOT NULL,
+  badge_id UUID REFERENCES public.badges(id) ON DELETE CASCADE NOT NULL,
+  earned_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  is_notified BOOLEAN DEFAULT FALSE NOT NULL,
+  UNIQUE(user_id, badge_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_badges_user_id ON public.user_badges(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_badges_badge_id ON public.user_badges(badge_id);
+
+ALTER TABLE public.user_badges ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own badges" ON public.user_badges;
+CREATE POLICY "Users can view own badges"
+  ON public.user_badges FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own badges" ON public.user_badges;
+CREATE POLICY "Users can insert own badges"
+  ON public.user_badges FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own badges" ON public.user_badges;
+CREATE POLICY "Users can update own badges"
+  ON public.user_badges FOR UPDATE
+  USING (auth.uid() = user_id);
+
+
+-- =====================================================
+-- 13. 뱃지 초기 데이터
+-- =====================================================
+INSERT INTO badges (code, name, description, icon, category, tier, condition_type, condition_value, sort_order) VALUES
+-- 레벨 뱃지
+('level_5', '초보 학습자', '레벨 5 달성', '🌱', 'level', 1, 'level_reach', 5, 100),
+('level_10', '성장하는 학습자', '레벨 10 달성', '🌿', 'level', 2, 'level_reach', 10, 101),
+('level_25', '숙련된 학습자', '레벨 25 달성', '🌳', 'level', 3, 'level_reach', 25, 102),
+('level_50', '마스터 학습자', '레벨 50 달성', '🏆', 'level', 4, 'level_reach', 50, 103),
+-- 콤보 뱃지
+('combo_5', '콤보 시작!', '5 콤보 달성', '🔥', 'combo', 1, 'combo_achieve', 5, 200),
+('combo_10', '불타는 연속', '10 콤보 달성', '💥', 'combo', 2, 'combo_achieve', 10, 201),
+('combo_20', '콤보 마스터', '20 콤보 달성', '⚡', 'combo', 3, 'combo_achieve', 20, 202),
+('combo_50', '전설의 콤보', '50 콤보 달성', '🌟', 'combo', 4, 'combo_achieve', 50, 203),
+-- 스트릭 뱃지
+('streak_3', '3일 연속', '3일 연속 학습', '📅', 'streak', 1, 'streak_reach', 3, 300),
+('streak_7', '일주일 연속', '7일 연속 학습', '🗓️', 'streak', 2, 'streak_reach', 7, 301),
+('streak_30', '한 달 연속', '30일 연속 학습', '📆', 'streak', 3, 'streak_reach', 30, 302),
+('streak_100', '100일의 기적', '100일 연속 학습', '🎯', 'streak', 4, 'streak_reach', 100, 303),
+-- 퀴즈 완료 뱃지
+('quiz_1', '첫 퀴즈', '첫 번째 퀴즈 완료', '🎉', 'quiz_count', 1, 'quiz_complete', 1, 400),
+('quiz_10', '퀴즈 애호가', '10개 퀴즈 완료', '📝', 'quiz_count', 1, 'quiz_complete', 10, 401),
+('quiz_50', '퀴즈 탐험가', '50개 퀴즈 완료', '🗺️', 'quiz_count', 2, 'quiz_complete', 50, 402),
+('quiz_100', '퀴즈 정복자', '100개 퀴즈 완료', '👑', 'quiz_count', 3, 'quiz_complete', 100, 403),
+('quiz_500', '퀴즈 전설', '500개 퀴즈 완료', '💎', 'quiz_count', 4, 'quiz_complete', 500, 404),
+-- 정답률 뱃지
+('accuracy_80', '정확도 80%', '정답률 80% 이상 유지', '✅', 'accuracy', 1, 'accuracy_maintain', 80, 500),
+('accuracy_90', '정확도 90%', '정답률 90% 이상 유지', '🎯', 'accuracy', 2, 'accuracy_maintain', 90, 501),
+('accuracy_95', '정확도 95%', '정답률 95% 이상 유지', '💯', 'accuracy', 3, 'accuracy_maintain', 95, 502)
+ON CONFLICT (code) DO NOTHING;
+
+
+-- =====================================================
+-- 14. 뱃지 체크 및 부여 함수
+-- =====================================================
+CREATE OR REPLACE FUNCTION public.check_and_award_badges(p_user_id UUID)
+RETURNS TABLE(badge_code TEXT, badge_name TEXT, badge_icon TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_profile RECORD;
+  v_badge RECORD;
+  v_max_combo INTEGER;
+BEGIN
+  SELECT * INTO v_profile FROM user_profiles WHERE id = p_user_id;
+  IF NOT FOUND THEN RETURN; END IF;
+
+  SELECT COALESCE(MAX(max_combo), 0) INTO v_max_combo
+  FROM play_sessions WHERE user_id = p_user_id;
+
+  FOR v_badge IN SELECT * FROM badges ORDER BY sort_order LOOP
+    IF EXISTS (SELECT 1 FROM user_badges WHERE user_id = p_user_id AND badge_id = v_badge.id) THEN
+      CONTINUE;
+    END IF;
+
+    IF (
+      (v_badge.condition_type = 'level_reach' AND v_profile.level >= v_badge.condition_value) OR
+      (v_badge.condition_type = 'combo_achieve' AND v_max_combo >= v_badge.condition_value) OR
+      (v_badge.condition_type = 'streak_reach' AND v_profile.longest_streak >= v_badge.condition_value) OR
+      (v_badge.condition_type = 'quiz_complete' AND v_profile.total_quizzes_played >= v_badge.condition_value) OR
+      (v_badge.condition_type = 'accuracy_maintain' AND
+       v_profile.total_questions_answered >= 50 AND
+       (v_profile.total_correct_answers::FLOAT / v_profile.total_questions_answered * 100) >= v_badge.condition_value)
+    ) THEN
+      INSERT INTO user_badges (user_id, badge_id, is_notified)
+      VALUES (p_user_id, v_badge.id, FALSE);
+
+      badge_code := v_badge.code;
+      badge_name := v_badge.name;
+      badge_icon := v_badge.icon;
+      RETURN NEXT;
+    END IF;
+  END LOOP;
+END;
+$$;
