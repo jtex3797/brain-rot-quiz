@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { XPGainDisplay } from './XPGainDisplay';
 import { LoadMoreModal } from './LoadMoreModal';
+import { BadgeEarnedModal } from '@/components/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Question, UserAnswer } from '@/types';
 import type { SessionResult } from '@/lib/supabase/session';
@@ -45,6 +46,15 @@ export function QuizResult({
   const { user } = useAuth();
   const [showWrongAnswers, setShowWrongAnswers] = useState(false);
   const [showLoadMoreModal, setShowLoadMoreModal] = useState(false);
+  const [showBadgeModal, setShowBadgeModal] = useState(false);
+
+  // 새 뱃지 획득 시 모달 표시 (XP 표시 후 딜레이)
+  useEffect(() => {
+    if (sessionResult?.newBadges && sessionResult.newBadges.length > 0) {
+      const timer = setTimeout(() => setShowBadgeModal(true), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [sessionResult?.newBadges]);
 
   const handleLoadMoreConfirm = (count: number) => {
     setShowLoadMoreModal(false);
@@ -264,6 +274,13 @@ export function QuizResult({
         remainingCount={remainingCount ?? 0}
         defaultCount={sessionSize}
         isLoading={isLoadingMore}
+      />
+
+      {/* 뱃지 획득 모달 */}
+      <BadgeEarnedModal
+        badges={sessionResult?.newBadges || []}
+        isOpen={showBadgeModal}
+        onClose={() => setShowBadgeModal(false)}
       />
 
       {/* 버튼 그룹 */}

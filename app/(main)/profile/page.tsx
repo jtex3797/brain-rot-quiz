@@ -7,6 +7,7 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
+import { BadgeList } from '@/components/badge';
 
 // 레벨별 필요 XP 계산 (schema.sql의 calculate_level 역산)
 function getXPForLevel(level: number): number {
@@ -220,6 +221,9 @@ export default function ProfilePage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* 뱃지 */}
+          <BadgeList userId={profile.id} />
 
           {/* 가입일 */}
           <p className="text-sm text-foreground/50 text-center">

@@ -2,8 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from './client';
+import { checkAndAwardBadges } from './badges';
 import { logger } from '@/lib/utils/logger';
-import type { UserAnswer, Question } from '@/types';
+import type { UserAnswer, Question, NewlyEarnedBadge } from '@/types';
 import type { PlaySessionInsert, PlayAnswerInsert } from '@/types/supabase';
 
 // 세션 완료 결과 타입
@@ -19,6 +20,7 @@ export interface SessionResult {
     new_streak: number;
     is_new_day: boolean;
   } | null;
+  newBadges: NewlyEarnedBadge[];
 }
 
 // ============================================
@@ -104,6 +106,7 @@ export async function completeQuizSession(
       xpEarned,
       xpResult: null,
       streakResult: null,
+      newBadges: [],
     };
   }
 
@@ -275,11 +278,24 @@ export async function completeQuizSession(
     });
   }
 
+  // 6. 뱃지 체크 및 부여
+  let newBadges: NewlyEarnedBadge[] = [];
+  try {
+    const badgeResult = await checkAndAwardBadges(userId);
+    newBadges = badgeResult.newBadges;
+  } catch (badgeError) {
+    logger.error('Supabase', '뱃지 체크 실패', {
+      error: badgeError instanceof Error ? badgeError.message : 'Unknown error',
+      userId,
+    });
+  }
+
   return {
     sessionId: session.id,
     xpEarned,
     xpResult,
     streakResult,
+    newBadges,
   };
 }
 
