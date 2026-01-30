@@ -125,6 +125,7 @@ export interface AIError {
 export type TransformationType =
   | 'swap_answer' // 정답↔오답 교환 (MCQ)
   | 'shift_blank' // 빈칸 위치 변경 (Fill)
+  | 'multi_blank' // 다중 빈칸 생성 (Fill)
   | 'negate' // 부정형 변환 (OX)
   | 'shuffle_options' // 보기 순서 변경
   | 'mcq_to_ox'; // 객관식 → OX 변환
@@ -152,6 +153,7 @@ export interface QuestionExtended extends Question {
 export interface TransformationOptions {
   enableSwapAnswers: boolean;
   enableBlankShift: boolean;
+  enableMultiBlanks: boolean; // 다중 빈칸 생성
   enableNegation: boolean;
   enableOptionShuffle: boolean;
   enableTypeConversion: boolean;

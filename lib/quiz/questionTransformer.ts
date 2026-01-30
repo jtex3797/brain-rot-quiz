@@ -137,7 +137,7 @@ function transformSwapAnswer(question: Question): TransformedQuestion | null {
 }
 
 /**
- * 빈칸 위치 변경 (Fill 전용)
+ * 빈칸 위치 변경 (Fill 전용) - 단일 변형
  */
 function transformShiftBlank(question: Question): TransformedQuestion | null {
   if (question.type !== 'fill' && question.type !== 'short') return null;
@@ -177,6 +177,59 @@ function transformShiftBlank(question: Question): TransformedQuestion | null {
     transformType: 'shift_blank',
     originalId: question.id,
   };
+}
+
+/**
+ * 다중 빈칸 생성 (Fill 전용) - 모든 키워드에 대해 빈칸 문제 생성
+ */
+function generateMultipleBlanks(question: Question): TransformedQuestion[] {
+  if (question.type !== 'fill' && question.type !== 'short') return [];
+
+  // 빈칸 패턴 체크 (g 플래그 없이 테스트)
+  const hasBlank = /\[____\]|\[___\]|\[__\]/.test(question.questionText);
+  if (!hasBlank) return [];
+
+  // 원래 정답으로 빈칸 채우기 (g 플래그로 모든 빈칸 교체)
+  const filledText = question.questionText.replace(
+    /\[____\]|\[___\]|\[__\]/g,
+    question.correctAnswers[0]
+  );
+
+  // 문장에서 키워드 추출 (2글자+, 숫자 아님, 원래 정답 아님)
+  const tokens = tokenize(filledText);
+  const keywords = tokens.filter(
+    (t) => t.length >= 2 && !/^\d+$/.test(t) && t !== question.correctAnswers[0]
+  );
+
+  if (keywords.length === 0) return [];
+
+  // 중복 키워드 제거
+  const uniqueKeywords = [...new Set(keywords)];
+
+  // 각 키워드에 대해 빈칸 문제 생성
+  const results: TransformedQuestion[] = [];
+
+  for (const keyword of uniqueKeywords) {
+    // 키워드가 문장에 실제로 있는지 확인
+    if (!filledText.includes(keyword)) continue;
+
+    const newText = filledText.replace(keyword, '[____]');
+
+    // ID 생성 시 특수문자 제거
+    const safeKeyword = keyword.replace(/[^a-zA-Z0-9가-힣]/g, '').slice(0, 4);
+
+    results.push({
+      id: `${question.id}_mb_${safeKeyword}`,
+      type: 'fill',
+      questionText: newText,
+      correctAnswers: [keyword],
+      explanation: `변형 문제. 원래 빈칸: ${question.correctAnswers[0]}`,
+      transformType: 'multi_blank',
+      originalId: question.id,
+    });
+  }
+
+  return results;
 }
 
 /**
@@ -329,6 +382,7 @@ export function transformQuestions(
 
   if (options.enableSwapAnswers) transformers.push(transformSwapAnswer);
   if (options.enableBlankShift) transformers.push(transformShiftBlank);
+  if (options.enableMultiBlanks) transformers.push(generateMultipleBlanks);
   if (options.enableNegation) transformers.push(transformNegate);
   if (options.enableOptionShuffle) transformers.push(transformShuffleOptions);
   if (options.enableTypeConversion) transformers.push(transformMcqToOx);
@@ -371,6 +425,7 @@ export function transformQuestions(
 export const DEFAULT_TRANSFORMATION_OPTIONS: TransformationOptions = {
   enableSwapAnswers: true,
   enableBlankShift: true,
+  enableMultiBlanks: true, // 다중 빈칸 생성 활성화
   enableNegation: true,
   enableOptionShuffle: true,
   enableTypeConversion: false, // 기본 비활성화 (품질 보장 어려움)
@@ -380,6 +435,7 @@ export const DEFAULT_TRANSFORMATION_OPTIONS: TransformationOptions = {
 export {
   transformSwapAnswer,
   transformShiftBlank,
+  generateMultipleBlanks,
   transformNegate,
   transformShuffleOptions,
   transformMcqToOx,

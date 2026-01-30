@@ -31,10 +31,11 @@ export interface QuestionCapacity {
 
 const CAPACITY_CONSTANTS = {
   CHARS_PER_QUESTION: 100,
-  SENTENCES_PER_QUESTION: 0.67, // 1.5 문장당 1문제
-  KEYWORDS_PER_QUESTION: 10,
+  SENTENCES_PER_QUESTION: 0.5, // 2 문장당 1문제 (완화)
+  KEYWORDS_PER_QUESTION: 5, // 5 키워드당 1문제 (완화: 10 → 5)
   MIN_CAPACITY: 1,
-  MAX_CAPACITY: 50,
+  MAX_CAPACITY: 100, // 최대 용량 증가 (50 → 100)
+  BLANK_MULTIPLIER_MAX: 2.5, // 빈칸 다중 생성 최대 배수
 } as const;
 
 // =====================================================
@@ -136,11 +137,12 @@ function generateCapacityReason(
 /**
  * 텍스트 품질에 따른 문제 생성 용량 계산
  *
- * 공식:
- * - 문장 기반: 문장수 × 1.5
- * - 키워드 기반: 고유 키워드수 / 10
+ * 공식 (개선됨):
+ * - 문장 기반: 문장수 / 0.5 (문장당 2문제)
+ * - 키워드 기반: 고유 키워드수 / 5
  * - 문자 기반: 문자수 / 100
- * - 최종: min(위 3개) × 정보밀도 가중치
+ * - 빈칸 다중 생성 배수 적용
+ * - 최종: 완화된 선택 × 정보밀도 가중치
  */
 export function calculateQuestionCapacity(
   text: string,
@@ -159,11 +161,27 @@ export function calculateQuestionCapacity(
     metrics.characterCount / CAPACITY_CONSTANTS.CHARS_PER_QUESTION
   );
 
-  // 가장 보수적인 값 선택
-  const rawMax = Math.min(sentenceBasedMax, keywordBasedMax, charBasedMax);
+  // 빈칸 다중 생성 배수 계산 (문장당 평균 키워드 수 기반)
+  const avgKeywordsPerSentence =
+    metrics.sentenceCount > 0
+      ? metrics.uniqueKeywordCount / metrics.sentenceCount
+      : 1;
+  const blankMultiplier = Math.min(
+    CAPACITY_CONSTANTS.BLANK_MULTIPLIER_MAX,
+    Math.max(1, avgKeywordsPerSentence / 2) // 키워드 2개당 배수 1
+  );
 
-  // 정보 밀도 가중치 (0.5 ~ 1.0)
-  const densityMultiplier = 0.5 + metrics.informationDensity * 0.5;
+  // 문장 기반에 빈칸 배수 적용
+  const adjustedSentenceMax = Math.floor(sentenceBasedMax * blankMultiplier);
+
+  // 완화된 용량 계산: 문장/키워드 중 큰 값과 문자 기반 중 큰 값
+  const rawMax = Math.max(
+    Math.min(adjustedSentenceMax, keywordBasedMax), // 문장×배수와 키워드 중 작은 값
+    charBasedMax // 문자 기반 (최소 보장)
+  );
+
+  // 정보 밀도 가중치 (0.6 ~ 1.0, 더 관대하게)
+  const densityMultiplier = 0.6 + metrics.informationDensity * 0.4;
   const adjustedMax = Math.floor(rawMax * densityMultiplier);
 
   // 범위 제한
