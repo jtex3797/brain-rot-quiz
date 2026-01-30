@@ -101,7 +101,8 @@
 | 기능 | 상태 | 설명 | 관련 파일 |
 |------|:----:|------|-----------|
 | 퀴즈 재도전 | :white_check_mark: | 동일 퀴즈 재시작 | `components/quiz/QuizPlayer.tsx`, `components/quiz/QuizResult.tsx` |
-| 오답노트 | :x: | 틀린 문제 저장 | - |
+| 오답노트 | :white_check_mark: | 틀린 문제 저장 및 퀴즈별 필터링 | `app/(main)/wrong-answers/`, `lib/supabase/wrongAnswers.ts` |
+| 오답 복습 | :white_check_mark: | 오답만 모아서 다시 풀기 | `app/(quiz)/wrong-review/page.tsx` |
 | 복습 시스템 | :x: | 스페이스드 리피티션 | - |
 | 퀴즈 공유 | :x: | 링크 공유 | - |
 | 다크 모드 | :white_check_mark: | 테마 전환 (Light/Dark) | `components/ui/ThemeToggle.tsx` |
@@ -167,3 +168,4 @@
 | 2026-01-28 | 유사 정답 매칭 및 다중 정답 기능 구현 완료 (Phase 6 완료) |
 | 2026-01-30 | Gemini 모델명 수정 (gemini-2.0-flash), 다중 정답 프롬프트 강화 |
 | 2026-01-30 | 플레이 중 문제 수정 기능 구현 (EditQuestionModal, 소유권 확인) |
+| 2026-01-30 | 오답노트 기능 완료 (퀴즈별 필터링 + 오답 복습 모드) |

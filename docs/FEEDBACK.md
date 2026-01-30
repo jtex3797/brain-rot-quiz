@@ -72,3 +72,9 @@
 15. **AI 모델 안정화** (완료)
    - [x] Gemini 모델명 수정 (gemini-2.0-flash-exp → gemini-2.0-flash).
    - 관련 파일: `lib/ai/models.ts`
+
+16. **오답노트 기능** (완료)
+   - [x] 세션별 오답 자동 저장 및 목록 조회 (`/wrong-answers`).
+   - [x] 퀴즈별 필터링 기능으로 특정 퀴즈의 오답만 확인 가능.
+   - [x] 오답 복습 모드 - 틀린 문제만 모아서 다시 풀기 (`/wrong-review`).
+   - 관련 파일: `lib/supabase/wrongAnswers.ts`, `app/(main)/wrong-answers/`, `app/(quiz)/wrong-review/`
