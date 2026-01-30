@@ -216,6 +216,9 @@ export default function QuizPage() {
 
         setIsLoadingMore(true);
         try {
+            // 이미 푼 문제 ID 수집 (중복 방지)
+            const excludeIds = [...answeredQuestionIds, ...quiz.questions.map(q => q.id)];
+
             const response = await fetch('/api/quiz/load-more', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -223,6 +226,7 @@ export default function QuizPage() {
                     bankId: quiz.bankId,
                     count,
                     shuffle,
+                    excludeIds,
                 }),
             });
 
@@ -240,7 +244,7 @@ export default function QuizPage() {
 
                 setQuiz(updatedQuiz);
                 setRemainingCount(data.remainingCount);
-                setAnsweredQuestionIds(newQuestions.map(q => q.id));
+                setAnsweredQuestionIds([...excludeIds, ...newQuestions.map(q => q.id)]);
                 saveQuizToLocal(updatedQuiz);
             }
         } catch (error) {
@@ -249,7 +253,7 @@ export default function QuizPage() {
             setIsLoadingMore(false);
             setPageState('ready');
         }
-    }, [quiz]);
+    }, [quiz, answeredQuestionIds]);
 
     // 문제 수 선택 상태 (내 퀴즈 → 풀기)
     if (pageState === 'select' && quiz) {
