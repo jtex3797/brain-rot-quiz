@@ -131,7 +131,8 @@ export async function checkAndAwardBadges(
 ): Promise<BadgeCheckResult> {
   const supabase = createClient();
 
-  const { data, error } = await supabase.rpc('check_and_award_badges', {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.rpc as any)('check_and_award_badges', {
     p_user_id: userId,
   });
 
@@ -167,7 +168,8 @@ export async function checkAndAwardBadges(
 export async function markBadgesNotified(userId: string): Promise<void> {
   const supabase = createClient();
 
-  const { error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
     .from('user_badges')
     .update({ is_notified: true })
     .eq('user_id', userId)

@@ -8,7 +8,7 @@
 // =====================================================
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
-export type LogModule = 'API' | 'NLP' | 'AI' | 'Cache' | 'Pool' | 'Bank' | 'Transform' | 'Supabase';
+export type LogModule = 'API' | 'NLP' | 'AI' | 'Cache' | 'Pool' | 'Bank' | 'Transform' | 'Supabase' | 'Badges' | 'WrongAnswers';
 
 interface LogEntry {
   timestamp: Date;
@@ -276,6 +276,8 @@ class QuizLogger {
       Bank: '\x1b[94m',   // light blue (DB 문제 은행)
       Transform: '\x1b[90m', // gray
       Supabase: '\x1b[31m',  // red (DB 에러 눈에 띄게)
+      Badges: '\x1b[93m',    // bright yellow (뱃지 시스템)
+      WrongAnswers: '\x1b[91m', // bright red (오답노트)
     };
 
     const reset = '\x1b[0m';
