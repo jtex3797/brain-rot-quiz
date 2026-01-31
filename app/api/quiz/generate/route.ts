@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { content, difficulty = 'medium', bypassCache = false } = body;
     // sessionSize 지원 + sessionSize 하위 호환
-    const sessionSize = body.sessionSize ?? body.sessionSize ?? SESSION_SIZE.DEFAULT;
+    const sessionSize = body.sessionSize ?? SESSION_SIZE.DEFAULT;
     endStep({ sessionSize, difficulty, bypassCache });
 
     // 입력 검증

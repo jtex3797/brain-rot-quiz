@@ -174,7 +174,7 @@ export function calculateQuestionCapacity(
   // 문장 기반에 빈칸 배수 적용
   const adjustedSentenceMax = Math.floor(sentenceBasedMax * blankMultiplier);
 
-  // 완화된 용량 계산: 문장/키워드 중 큰 값과 문자 기반 중 큰 값
+  // 완화된 용량 계산: (문장×배수, 키워드 중 작은 값)과 문자 기반 중 큰 값
   const rawMax = Math.max(
     Math.min(adjustedSentenceMax, keywordBasedMax), // 문장×배수와 키워드 중 작은 값
     charBasedMax // 문자 기반 (최소 보장)
