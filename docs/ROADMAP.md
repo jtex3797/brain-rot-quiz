@@ -90,7 +90,7 @@
 | 레벨 시스템 | :white_check_mark: | XP 누적 레벨업 | `lib/supabase/schema.sql` |
 | 스트릭 | :white_check_mark: | update_streak 함수, 연속 학습일 | `lib/supabase/session.ts` |
 | XP 획득 UI | :white_check_mark: | 퀴즈 완료 시 XP 표시 | `components/quiz/XPGainDisplay.tsx` |
-| 뱃지 시스템 | :x: | 업적 달성 뱃지 | - |
+| 뱃지 시스템 | :white_check_mark: | 업적 달성 뱃지 | `lib/supabase/badges.ts`, `components/badge/` |
 | 리더보드 | :x: | 주간/월간 랭킹 | - |
 | 사운드 효과 | :white_check_mark: | 정답/오답 효과음 | `lib/hooks/useQuizSound.ts`, `contexts/SoundContext.tsx` |
 
@@ -169,3 +169,5 @@
 | 2026-01-30 | Gemini 모델명 수정 (gemini-2.0-flash), 다중 정답 프롬프트 강화 |
 | 2026-01-30 | 플레이 중 문제 수정 기능 구현 (EditQuestionModal, 소유권 확인) |
 | 2026-01-30 | 오답노트 기능 완료 (퀴즈별 필터링 + 오답 복습 모드) |
+| 2026-01-31 | 뱃지 시스템 구현 (데이터 모델, RPC 함수, UI 컴포넌트 통합) |
+| 2026-01-31 | 퀴즈 생성 시 '최근 문제 제외' 옵션 추가 (Duplicate Prevention) |

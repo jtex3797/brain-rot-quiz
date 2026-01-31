@@ -78,3 +78,14 @@
    - [x] 퀴즈별 필터링 기능으로 특정 퀴즈의 오답만 확인 가능.
    - [x] 오답 복습 모드 - 틀린 문제만 모아서 다시 풀기 (`/wrong-review`).
    - 관련 파일: `lib/supabase/wrongAnswers.ts`, `app/(main)/wrong-answers/`, `app/(quiz)/wrong-review/`
+
+17. **뱃지 시스템 (Badge System)** (완료)
+    - [x] 업적 기반 뱃지 획득 시스템 구축 (레벨, 콤보, 정답률, 스트릭 등).
+    - [x] 획득 시 실시간 애니메이션 모달 알림.
+    - [x] 프로필 페이지에서 뱃지 목록 및 진행도 확인 가능.
+    - 관련 파일: `lib/supabase/badges.ts`, `components/badge/`, `types/badge.ts`
+
+18. **퀴즈 생성 시 중복 문제 방지** (완료)
+    - [x] '최근 문제 제외' 옵션을 통해 중복되는 문제 생성을 방지하고 학습 다양성 확보.
+    - [x] API 요청 시 이전 퀴즈의 ID 목록(`excludeIds`)을 전달하여 필터링.
+    - 관련 파일: `app/(quiz)/quiz/[id]/page.tsx`, `lib/quiz/questionBankService.ts`
