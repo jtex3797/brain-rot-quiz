@@ -155,7 +155,7 @@ export default function WrongAnswersPage() {
             <PageHeader
                 title="오답노트"
                 description={`총 ${filteredWrongAnswers.length}개의 오답`}
-                backHref="/"
+                backLink={{ href: "/", label: "홈" }}
             />
 
             {/* 오답 복습하기 버튼 */}

@@ -213,7 +213,7 @@ export default function QuizEditPage() {
                 <PageHeader
                     title="퀴즈 수정"
                     description={error}
-                    backHref="/my-quizzes"
+                    backLink={{ href: "/my-quizzes", label: "내 퀴즈" }}
                 />
                 <div className="text-center py-8">
                     <Button onClick={() => router.push('/my-quizzes')}>
@@ -231,7 +231,7 @@ export default function QuizEditPage() {
             <PageHeader
                 title="퀴즈 수정"
                 description="문제와 정답을 수정할 수 있습니다"
-                backHref="/my-quizzes"
+                backLink={{ href: "/my-quizzes", label: "내 퀴즈" }}
             />
 
             {/* 메타데이터 편집 */}
