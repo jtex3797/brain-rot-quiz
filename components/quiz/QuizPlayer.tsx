@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { SoundToggle } from '@/components/ui/SoundToggle';
 import { AutoNextToggle } from '@/components/ui/AutoNextToggle';
@@ -9,7 +9,7 @@ import { useAutoNextSettings } from '@/contexts/AutoNextContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { QuestionCard } from './QuestionCard';
 import { QuizResult } from './QuizResult';
-import { ComboDisplay, ComboCounter } from './ComboDisplay';
+import { COMBO_THRESHOLDS, getComboBgColor } from '@/lib/constants';
 import {
   useQuizCombo,
   useQuizProgress,
@@ -60,7 +60,6 @@ export function QuizPlayer({
   const {
     combo,
     maxCombo,
-    showAnimation: showComboAnimation,
     incrementCombo,
     resetCombo,
     resetAll: resetComboAll,
@@ -199,16 +198,31 @@ export function QuizPlayer({
       {/* 상단 바 */}
       <div className="sticky top-0 bg-background/80 backdrop-blur-sm z-40 pb-4">
         <div className="flex items-center justify-between mb-3">
-          {/* 진행률 텍스트 */}
-          <span className="text-sm text-foreground/60">
-            {currentIndex + 1} / {totalQuestions}
-          </span>
+          {/* 진행률 + 콤보 뱃지 */}
+          <div className="flex items-center gap-2">
+            {/* 문제 수 뱃지 */}
+            <div className="bg-foreground/10 px-3 py-1 rounded-full font-semibold text-sm">
+              {currentIndex + 1} / {totalQuestions}
+            </div>
 
-          {/* 자동넘김 + 사운드 토글 + 콤보 카운터 */}
+            {/* 콤보 뱃지 */}
+            {combo >= COMBO_THRESHOLDS.MIN_DISPLAY && (
+              <motion.div
+                key={combo}
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className={`${getComboBgColor(combo)} text-white px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1`}
+              >
+                <span>🔥</span>
+                <span>{combo}x</span>
+              </motion.div>
+            )}
+          </div>
+
+          {/* 자동넘김 + 사운드 토글 */}
           <div className="flex items-center gap-2">
             <AutoNextToggle />
             <SoundToggle />
-            <ComboCounter combo={combo} />
           </div>
         </div>
 
@@ -220,8 +234,6 @@ export function QuizPlayer({
         />
       </div>
 
-      {/* 콤보 애니메이션 */}
-      <ComboDisplay combo={combo} show={showComboAnimation} />
 
       {/* 문제 카드 */}
       <div className="mt-8">

@@ -40,11 +40,18 @@ export interface CreateBankResult {
  */
 export function fromDbBankQuestion(dbQ: DbQuestionBankItem): Question {
   const json = dbQ.question_json as Record<string, any>;
+
+  // OX 문제인데 options가 없으면 자동 설정
+  let options = json.options;
+  if (json.type === 'ox' && (!options || options.length === 0)) {
+    options = ['O', 'X'];
+  }
+
   return {
     id: dbQ.id,
     type: json.type,
     questionText: json.questionText,
-    options: json.options,
+    options,
     correctAnswers: json.correctAnswers ?? (json.correctAnswer ? [json.correctAnswer] : []),
     explanation: json.explanation,
   };
