@@ -7,7 +7,7 @@ const protectedRoutes = ['/profile', '/my-quizzes', '/dashboard'];
 // 인증된 사용자가 접근하면 안 되는 라우트
 const authRoutes = ['/auth/login', '/auth/signup'];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
 
@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * 다음 경로를 제외한 모든 요청에 미들웨어 적용:
+     * 다음 경로를 제외한 모든 요청에 프록시 적용:
      * - _next/static (정적 파일)
      * - _next/image (이미지 최적화)
      * - favicon.ico (파비콘)

@@ -31,9 +31,14 @@ export async function updateSession(request: NextRequest) {
   );
 
   // 세션 갱신 (중요: 이 호출로 쿠키가 갱신됨)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // edge runtime에서 Supabase 토큰 갱신 fetch 실패 시 graceful 처리
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    // 네트워크 오류 등으로 fetch 실패 시 비로그인 상태로 처리
+  }
 
   return { supabaseResponse, user };
 }
