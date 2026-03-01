@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { OptionButton, OptionState } from './OptionButton';
 import { EditQuestionModal } from './EditQuestionModal';
-import { useQuizSound } from '@/lib/hooks';
+import { useQuizSound, useQuizKeyboard } from '@/lib/hooks';
 import { checkAnswer, type MatchResult } from '@/lib/quiz/answerMatcher';
 import type { Question } from '@/types';
 
@@ -67,19 +67,17 @@ export function QuestionCard({
     };
   }, []);
 
-  // 수동 모드에서 Enter 키로 다음 문제 넘기기
-  useEffect(() => {
-    if (!showResult || autoNext || showEditModal) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && selectedAnswer && matchResult) {
-        onAnswer(selectedAnswer, matchResult.isCorrect, matchResult);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showResult, autoNext, showEditModal, selectedAnswer, matchResult, onAnswer]);
+  // 키보드 단축키 (1/2/3/4: 선택지 선택, Enter: 다음 문제)
+  useQuizKeyboard({
+    showResult,
+    autoNext,
+    showEditModal,
+    options: question.options,
+    selectedAnswer,
+    matchResult,
+    onSelectOption: handleOptionClick,
+    onAnswer,
+  });
 
   // autoNext 토글 시 showResult 상태와 동기화
   useEffect(() => {
