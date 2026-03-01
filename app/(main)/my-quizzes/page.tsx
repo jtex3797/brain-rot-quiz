@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
+import { getModelDisplayName } from '@/lib/constants';
 import type { DbQuiz } from '@/types/supabase';
 
 export default function MyQuizzesPage() {
@@ -168,6 +169,11 @@ export default function MyQuizzesPage() {
                       >
                         {getDifficultyLabel(quiz.difficulty)}
                       </span>
+                      {quiz.ai_model && quiz.ai_model !== 'auto' && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                          🤖 {getModelDisplayName(quiz.ai_model)}
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-4 text-sm text-foreground/60">

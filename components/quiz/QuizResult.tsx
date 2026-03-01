@@ -8,6 +8,7 @@ import { XPGainDisplay } from './XPGainDisplay';
 import { LoadMoreModal } from './LoadMoreModal';
 import { BadgeEarnedModal } from '@/components/badge';
 import { useAuth } from '@/contexts/AuthContext';
+import { getModelDisplayName } from '@/lib/constants';
 import type { Question, UserAnswer } from '@/types';
 import type { SessionResult } from '@/lib/supabase/session';
 
@@ -25,6 +26,7 @@ interface QuizResultProps {
   isLoadingMore?: boolean;
   onResetAll?: () => void;
   sessionSize?: number; // 세션당 문제 수
+  modelUsed?: string;   // 사용된 AI 모델 ID (배지 표시용)
   backHref?: string;
 }
 
@@ -41,6 +43,7 @@ export function QuizResult({
   isLoadingMore = false,
   onResetAll,
   sessionSize,
+  modelUsed,
   backHref,
 }: QuizResultProps) {
   const { user } = useAuth();
@@ -113,10 +116,24 @@ export function QuizResult({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
-        className="text-foreground/60 mb-8"
+        className="text-foreground/60 mb-3"
       >
         {quizTitle}
       </motion.p>
+
+      {/* [I-15] 모델 배지: auto이거나 미설정이면 미표시 */}
+      {modelUsed && modelUsed !== 'auto' && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.45 }}
+          className="mb-6"
+        >
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+            🤖 {getModelDisplayName(modelUsed)}
+          </span>
+        </motion.div>
+      )}
 
       {/* XP 획득 표시 (로그인 사용자) */}
       {user && sessionResult && sessionResult.xpEarned > 0 && (

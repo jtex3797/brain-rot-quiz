@@ -38,6 +38,38 @@ export const CONTENT_LENGTH = {
 /** 난이도 타입 */
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
+// ============================================
+// AI 모델 선택 관련 상수
+// ============================================
+
+/** AI 모델 선택 타입 */
+export type ModelOption =
+  | 'auto'
+  | 'gemini-2.0-flash'
+  | 'gpt-4o-mini'
+  | 'claude-3-5-haiku-20241022';
+
+/** AI 모델 선택 옵션 (UI용) */
+export const MODEL_OPTIONS = [
+  { value: 'auto',                        label: '자동 (추천)',         description: '빠르고 안정적인 폴백 전략' },
+  { value: 'gemini-2.0-flash',            label: 'Google Gemini',       description: '무료 한도 높음, 빠른 응답' },
+  { value: 'gpt-4o-mini',                 label: 'OpenAI GPT-4o mini',  description: '안정적, 저비용' },
+  { value: 'claude-3-5-haiku-20241022',   label: 'Claude Haiku',        description: '정확도 높음' },
+] as const;
+
+/** 유효한 모델 값 목록 (API 검증용) */
+export const VALID_MODEL_VALUES = MODEL_OPTIONS.map((m) => m.value);
+
+/**
+ * 모델 ID → 사용자 친화적 표시명 변환
+ * [I-6] ' (cached)' suffix 제거 후 조회
+ */
+export function getModelDisplayName(model: string | null | undefined): string {
+  const cleaned = (model ?? '').replace(' (cached)', '').trim();
+  const found = MODEL_OPTIONS.find((m) => m.value === cleaned);
+  return found ? found.label : (cleaned || '자동');
+}
+
 /** 난이도 옵션 (UI용) */
 export const DIFFICULTY_OPTIONS: Array<{
   value: Difficulty;

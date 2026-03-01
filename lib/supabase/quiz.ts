@@ -66,6 +66,8 @@ export function fromDbQuiz(dbQuiz: DbSavedQuiz, dbQuestions: DbSavedQuestion[]):
       .map(fromDbQuestion),
     bankId: dbQuiz.bank_id ?? undefined,
     createdAt: new Date(dbQuiz.created_at),
+    // [I-7] modelUsed 매핑, [I-15] 'auto'이면 undefined 정규화 (배지 미표시)
+    modelUsed: (dbQuiz.ai_model && dbQuiz.ai_model !== 'auto') ? dbQuiz.ai_model : undefined,
   };
 }
 

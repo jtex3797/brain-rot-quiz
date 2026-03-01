@@ -11,9 +11,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   CONTENT_LENGTH,
   DIFFICULTY_OPTIONS,
+  MODEL_OPTIONS,
   SESSION_SIZE,
   ERROR_MESSAGES,
   type Difficulty,
+  type ModelOption,
 } from '@/lib/constants';
 import type { Quiz } from '@/types';
 import type { QuestionCapacity } from '@/lib/quiz';
@@ -39,6 +41,7 @@ export default function UploadPage() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<ModelOption>('auto');
 
   // 텍스트 분석 상태
   const [textCapacity, setTextCapacity] = useState<QuestionCapacity | null>(null);
@@ -116,6 +119,7 @@ export default function UploadPage() {
           content,
           sessionSize: questionCount, // 세션당 문제 수
           difficulty,
+          preferredModel: selectedModel, // [I-8] 선택된 모델 전달
         }),
       });
 
@@ -140,6 +144,8 @@ export default function UploadPage() {
         remainingCount: data.remainingCount,
         sessionSize: questionCount, // 세션당 문제 수
         requestedQuestionCount: questionCount, // 하위 호환
+        // [I-9] 실제 사용된 모델 ID — Auto 모드 시 미설정 (db-bank-system 등 내부값 노출 방지)
+        modelUsed: selectedModel !== 'auto' ? data.model : undefined,
       };
 
       // 로컬 스토리지에 저장
@@ -151,7 +157,7 @@ export default function UploadPage() {
           const saveResponse = await fetch('/api/quiz/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ quiz, sourceText: content, difficulty }),
+            body: JSON.stringify({ quiz, sourceText: content, difficulty, aiModel: selectedModel }), // [I-8]
           });
           const saveResult = await saveResponse.json();
 
@@ -317,6 +323,29 @@ export default function UploadPage() {
                       onClick={() => setDifficulty(option.value)}
                       disabled={loading}
                       className={`w-full rounded-lg border-2 p-3 text-left transition-colors ${difficulty === option.value
+                        ? 'border-primary bg-primary/10'
+                        : 'border-foreground/20 hover:border-foreground/40'
+                        } disabled:opacity-50`}
+                    >
+                      <div className="font-medium text-foreground">{option.label}</div>
+                      <div className="text-sm text-foreground/60">{option.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* AI 모델 선택 */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-foreground">
+                  AI 모델
+                </label>
+                <div className="space-y-2">
+                  {MODEL_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setSelectedModel(option.value)}
+                      disabled={loading}
+                      className={`w-full rounded-lg border-2 p-3 text-left transition-colors ${selectedModel === option.value
                         ? 'border-primary bg-primary/10'
                         : 'border-foreground/20 hover:border-foreground/40'
                         } disabled:opacity-50`}

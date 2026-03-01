@@ -34,6 +34,7 @@ export interface Quiz {
   remainingCount?: number;
   requestedQuestionCount?: number; // 사용자가 요청한 원래 문제 수 (하위 호환)
   sessionSize?: number; // 세션당 문제 수 (한 번에 푸는 묶음 단위)
+  modelUsed?: string; // 퀴즈 생성에 사용된 AI 모델 ID
 }
 
 /**
@@ -95,6 +96,7 @@ export interface AIModel {
 export interface QuizGenerationOptions {
   questionCount: number;
   difficulty: 'easy' | 'medium' | 'hard';
+  preferredModel?: string; // 선택된 AI 모델 ID (없거나 'auto'이면 자동 폴백)
 }
 
 /**

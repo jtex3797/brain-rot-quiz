@@ -176,6 +176,7 @@ export function QuizPlayer({
         isLoadingMore={isLoadingMore}
         onResetAll={onResetAll}
         sessionSize={quiz.sessionSize ?? quiz.requestedQuestionCount}
+        modelUsed={quiz.modelUsed}
         backHref={backHref}
       />
     );
