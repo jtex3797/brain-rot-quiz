@@ -41,7 +41,36 @@ export async function GET() {
             );
         }
 
-        return NextResponse.json({ quizzes: quizzes ?? [] });
+        const quizList = quizzes ?? [];
+
+        // bank_id가 있는 퀴즈의 고유 bank_id 목록
+        const bankIds = [...new Set(
+            quizList.filter((q) => q.bank_id).map((q) => q.bank_id as string)
+        )];
+
+        let bankCounts: Record<string, number> = {};
+
+        if (bankIds.length > 0) {
+            const { data: items } = await supabase
+                .from('question_bank_items')
+                .select('bank_id')
+                .in('bank_id', bankIds);
+
+            if (items) {
+                bankCounts = items.reduce<Record<string, number>>((acc, item) => {
+                    acc[item.bank_id] = (acc[item.bank_id] ?? 0) + 1;
+                    return acc;
+                }, {});
+            }
+        }
+
+        // 각 퀴즈에 bank_question_count 병합
+        const enrichedQuizzes = quizList.map((q) => ({
+            ...q,
+            bank_question_count: q.bank_id ? (bankCounts[q.bank_id] ?? null) : null,
+        }));
+
+        return NextResponse.json({ quizzes: enrichedQuizzes });
     } catch (error) {
         logger.error('API', '퀴즈 목록 조회 중 예외', {
             error: error instanceof Error ? error.message : String(error),

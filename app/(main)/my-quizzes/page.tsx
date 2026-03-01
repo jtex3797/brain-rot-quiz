@@ -11,10 +11,12 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { getModelDisplayName } from '@/lib/constants';
 import type { DbQuiz } from '@/types/supabase';
 
+type EnrichedQuiz = DbQuiz & { bank_question_count?: number | null };
+
 export default function MyQuizzesPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const [quizzes, setQuizzes] = useState<DbQuiz[]>([]);
+  const [quizzes, setQuizzes] = useState<EnrichedQuiz[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -177,7 +179,7 @@ export default function MyQuizzesPage() {
                     </div>
 
                     <div className="flex items-center gap-4 text-sm text-foreground/60">
-                      <span>📝 {quiz.question_count}문제</span>
+                      <span>📝 {quiz.bank_question_count ?? quiz.question_count}문제</span>
                       <span>
                         📅{' '}
                         {new Date(quiz.created_at).toLocaleDateString(
