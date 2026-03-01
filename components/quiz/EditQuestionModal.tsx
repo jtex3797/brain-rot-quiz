@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import type { Question, QuizType } from '@/types';
@@ -30,6 +30,19 @@ export function EditQuestionModal({
   const [editedQuestion, setEditedQuestion] = useState<Question>(question);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const explanationRef = useRef<HTMLTextAreaElement>(null);
+
+  // 마운트 시 기존 해설 높이 반영 (Framer Motion 애니메이션 후 측정)
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const el = explanationRef.current;
+      if (el) {
+        el.style.height = 'auto';
+        el.style.height = `${el.scrollHeight}px`;
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   // 질문 텍스트 변경
   const handleTextChange = (value: string) => {
@@ -145,7 +158,6 @@ export function EditQuestionModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={onClose}
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
@@ -286,10 +298,16 @@ export function EditQuestionModal({
               <div>
                 <label className="block text-sm font-medium mb-1">해설 (선택)</label>
                 <textarea
+                  ref={explanationRef}
                   value={editedQuestion.explanation ?? ''}
                   onChange={(e) => handleExplanationChange(e.target.value)}
+                  onInput={(e) => {
+                    const el = e.currentTarget;
+                    el.style.height = 'auto';
+                    el.style.height = `${el.scrollHeight}px`;
+                  }}
                   className="w-full px-3 py-2 border border-foreground/20 rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                  rows={2}
+                  rows={3}
                   placeholder="해설을 입력하세요 (선택사항)"
                 />
               </div>

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { OptionButton, OptionState } from './OptionButton';
 import { EditQuestionModal } from './EditQuestionModal';
 import { useQuizSound, useQuizKeyboard } from '@/lib/hooks';
+import { useDisplayPrefs } from '@/contexts/DisplayPrefsContext';
 import { checkAnswer, type MatchResult } from '@/lib/quiz/answerMatcher';
 import type { Question } from '@/types';
 
@@ -39,6 +40,7 @@ export function QuestionCard({
   const [showEditModal, setShowEditModal] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { playCorrect, playWrong } = useQuizSound();
+  const { explanationFontSize } = useDisplayPrefs();
 
   // 편집 모달 열기 (자동 넘김 타이머 중지)
   const handleOpenEdit = () => {
@@ -57,47 +59,15 @@ export function QuestionCard({
     }
   };
 
-  // 컴포넌트 언마운트 시 타이머 정리
-  // 참고: 문제가 바뀔 때 상태는 key prop으로 컴포넌트가 새로 마운트되어 자동 초기화됨
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
-  // 키보드 단축키 (1/2/3/4: 선택지 선택, Enter: 다음 문제)
-  useQuizKeyboard({
-    showResult,
-    autoNext,
-    showEditModal,
-    options: question.options,
-    selectedAnswer,
-    matchResult,
-    onSelectOption: handleOptionClick,
-    onAnswer,
-  });
-
-  // autoNext 토글 시 showResult 상태와 동기화
-  useEffect(() => {
-    if (!showResult || !matchResult || !selectedAnswer) return;
-
-    if (autoNext) {
-      // 수동 → 자동: 타이머 없으면 새로 설정
-      if (!timeoutRef.current) {
-        timeoutRef.current = setTimeout(() => {
-          onAnswer(selectedAnswer, matchResult.isCorrect, matchResult);
-        }, 1500);
-      }
-    } else {
-      // 자동 → 수동: 실행 중인 타이머 취소
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
+  // 편집 취소 시 처리 (autoNext 타이머 복구)
+  const handleCloseEdit = () => {
+    setShowEditModal(false);
+    if (autoNext && matchResult && selectedAnswer && !timeoutRef.current) {
+      timeoutRef.current = setTimeout(() => {
+        onAnswer(selectedAnswer, matchResult.isCorrect, matchResult);
+      }, 1500);
     }
-  }, [autoNext]); // eslint-disable-line react-hooks/exhaustive-deps
+  };
 
   const handleOptionClick = (option: string) => {
     if (disabled || showResult) return;
@@ -146,6 +116,48 @@ export function QuestionCard({
       }, 1500);
     }
   };
+
+  // 컴포넌트 언마운트 시 타이머 정리
+  // 참고: 문제가 바뀔 때 상태는 key prop으로 컴포넌트가 새로 마운트되어 자동 초기화됨
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  // 키보드 단축키 (1/2/3/4: 선택지 선택, Enter: 다음 문제)
+  useQuizKeyboard({
+    showResult,
+    autoNext,
+    showEditModal,
+    options: question.options,
+    selectedAnswer,
+    matchResult,
+    onSelectOption: handleOptionClick,
+    onAnswer,
+  });
+
+  // autoNext 토글 시 showResult 상태와 동기화
+  useEffect(() => {
+    if (!showResult || !matchResult || !selectedAnswer) return;
+
+    if (autoNext) {
+      // 수동 → 자동: 타이머 없으면 새로 설정
+      if (!timeoutRef.current) {
+        timeoutRef.current = setTimeout(() => {
+          onAnswer(selectedAnswer, matchResult.isCorrect, matchResult);
+        }, 1500);
+      }
+    } else {
+      // 자동 → 수동: 실행 중인 타이머 취소
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+  }, [autoNext]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getOptionState = (option: string): OptionState => {
     if (!showResult) {
@@ -270,7 +282,10 @@ export function QuestionCard({
             </div>
           </div>
           {question.explanation && (
-            <p className="mt-3 text-sm text-foreground/70 border-t border-foreground/10 pt-3">
+            <p className={`mt-3 ${
+              explanationFontSize === 'sm' ? 'text-sm' :
+              explanationFontSize === 'lg' ? 'text-lg' : 'text-base'
+            } text-foreground/70 border-t border-foreground/10 pt-3 whitespace-pre-wrap`}>
               {question.explanation}
             </p>
           )}
@@ -303,7 +318,7 @@ export function QuestionCard({
           isOpen={showEditModal}
           question={question}
           quizId={quizId}
-          onClose={() => setShowEditModal(false)}
+          onClose={handleCloseEdit}
           onSave={handleQuestionSave}
         />
       )}

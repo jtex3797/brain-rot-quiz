@@ -4,6 +4,7 @@ import { ReactNode } from 'react';
 import { ErrorBoundary } from './ErrorBoundary';
 import { SoundProvider } from '@/contexts/SoundContext';
 import { AutoNextProvider } from '@/contexts/AutoNextContext';
+import { DisplayPrefsProvider } from '@/contexts/DisplayPrefsContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import type { User } from '@supabase/supabase-js';
@@ -29,7 +30,9 @@ export function Providers({
       <ThemeProvider>
         <AuthProvider initialUser={initialUser} initialProfile={initialProfile}>
           <SoundProvider>
-            <AutoNextProvider>{children}</AutoNextProvider>
+            <DisplayPrefsProvider>
+              <AutoNextProvider>{children}</AutoNextProvider>
+            </DisplayPrefsProvider>
           </SoundProvider>
         </AuthProvider>
       </ThemeProvider>

@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { SoundToggle } from '@/components/ui/SoundToggle';
 import { AutoNextToggle } from '@/components/ui/AutoNextToggle';
+import { ExplanationFontToggle } from '@/components/ui/ExplanationFontToggle';
 import { useAutoNextSettings } from '@/contexts/AutoNextContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { QuestionCard } from './QuestionCard';
@@ -220,8 +221,9 @@ export function QuizPlayer({
             )}
           </div>
 
-          {/* 자동넘김 + 사운드 토글 */}
+          {/* 해설 글씨 크기 + 자동넘김 + 사운드 토글 */}
           <div className="flex items-center gap-2">
+            <ExplanationFontToggle />
             <AutoNextToggle />
             <SoundToggle />
           </div>
