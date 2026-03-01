@@ -144,7 +144,7 @@ export async function PATCH(
         // 2. 소유권 검증
         const { data: existingQuiz, error: quizError } = await supabase
             .from('saved_quizzes')
-            .select('user_id')
+            .select('user_id, bank_id')
             .eq('id', quizId)
             .single();
 
@@ -205,8 +205,8 @@ export async function PATCH(
                         logger.error('API', '문제 삭제 실패', { questionId: q.id, error: deleteError.message });
                     }
                 } else if (q.id) {
-                    // 4-2. 기존 문제 수정
-                    const { error: updateError } = await supabase
+                    // 4-2. 기존 문제 수정 (order_index 제외 - 기존 순서 유지)
+                    const { data: updatedRows, error: updateError } = await supabase
                         .from('saved_questions')
                         .update({
                             type: q.type,
@@ -214,15 +214,36 @@ export async function PATCH(
                             options: q.options ?? null,
                             correct_answers: q.correctAnswers,
                             explanation: q.explanation ?? null,
-                            order_index: i,
                         })
                         .eq('id', q.id)
-                        .eq('quiz_id', quizId);
+                        .eq('quiz_id', quizId)
+                        .select('id');
 
                     if (updateError) {
                         logger.error('API', '문제 수정 실패', { questionId: q.id, error: updateError.message });
-                    } else {
+                    } else if (updatedRows && updatedRows.length > 0) {
                         modifiedQuestionIds.push(q.id);
+                    } else if (existingQuiz.bank_id) {
+                        // saved_questions에 없는 문제 = bank에서 로드된 문제 → question_bank_items 직접 수정
+                        const { error: bankUpdateError } = await supabase
+                            .from('question_bank_items')
+                            .update({
+                                question_json: {
+                                    type: q.type,
+                                    questionText: q.questionText,
+                                    options: q.options,
+                                    correctAnswers: q.correctAnswers,
+                                    explanation: q.explanation,
+                                },
+                            })
+                            .eq('id', q.id)
+                            .eq('bank_id', existingQuiz.bank_id);
+
+                        if (bankUpdateError) {
+                            logger.error('API', 'bank 문제 수정 실패', { questionId: q.id, error: bankUpdateError.message });
+                        } else {
+                            modifiedQuestionIds.push(q.id);
+                        }
                     }
                 } else {
                     // 4-3. 새 문제 추가
@@ -252,12 +273,15 @@ export async function PATCH(
                     .in('question_id', modifiedQuestionIds);
             }
 
-            // 6. question_count 업데이트
-            const activeQuestions = body.questions.filter(q => !q._delete);
+            // 6. question_count 업데이트 (실제 DB 행 수 기준 - 부분 수정 시 오염 방지)
+            const { count: actualCount } = await supabase
+                .from('saved_questions')
+                .select('*', { count: 'exact', head: true })
+                .eq('quiz_id', quizId);
             await supabase
                 .from('saved_quizzes')
                 .update({
-                    question_count: activeQuestions.length,
+                    question_count: actualCount ?? 0,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', quizId);

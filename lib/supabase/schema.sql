@@ -153,6 +153,11 @@ CREATE POLICY "Anyone can insert bank items"
   ON public.question_bank_items FOR INSERT
   WITH CHECK (TRUE);
 
+DROP POLICY IF EXISTS "Anyone can update bank items" ON public.question_bank_items;
+CREATE POLICY "Anyone can update bank items"
+  ON public.question_bank_items FOR UPDATE
+  USING (TRUE);
+
 
 -- =====================================================
 -- 4. saved_quizzes 테이블

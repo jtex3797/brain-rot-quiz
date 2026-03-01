@@ -19,7 +19,8 @@
       "Bash(grep:*)",
       "Bash(node -e:*)",
       "Bash(npm ls:*)",
-      "Bash(head -100 \"c:\\\\jte-workspace\\\\my-project\\\\brain-rot-quiz/app/\\(main\\)/my-quizzes/page.tsx\")"
+      "Bash(head -100 \"c:\\\\jte-workspace\\\\my-project\\\\brain-rot-quiz/app/\\(main\\)/my-quizzes/page.tsx\")",
+      "Bash(git diff app/api/quiz/[id]/route.ts)"
     ]
   }
 }
