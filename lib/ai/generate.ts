@@ -1,5 +1,5 @@
 import { generateObject } from 'ai';
-import { getModelsByPriority } from './models';
+import { getModelsByPriority, getModelByName } from './models';
 import { SYSTEM_PROMPT, createUserPrompt, QuizSchema } from './prompts';
 import { processText, shouldPreprocess } from '@/lib/nlp';
 import {
@@ -9,8 +9,9 @@ import {
   hashOptions,
   type CacheOptions,
 } from '@/lib/cache';
+import { getModelDisplayName } from '@/lib/constants';
 import { logger } from '@/lib/utils/logger';
-import type { Quiz, QuizGenerationOptions, QuizGenerationResult, AIError } from '@/types';
+import type { Quiz, QuizGenerationOptions, QuizGenerationResult, AIError, AIModel } from '@/types';
 
 // =====================================================
 // 확장된 결과 타입
@@ -140,7 +141,10 @@ export async function generateQuizWithFallback(
   content: string,
   options: QuizGenerationOptions
 ): Promise<QuizGenerationResult> {
-  const models = getModelsByPriority();
+  const isStrict = !!(options.preferredModel && options.preferredModel !== 'auto');
+  const models = isStrict
+    ? [getModelByName(options.preferredModel!)].filter((m): m is AIModel => !!m)
+    : getModelsByPriority();
   const errors: AIError[] = [];
 
   logger.info('AI', `AI 모델 호출 시작 (입력 ${content.length}자, ${options.questionCount}문제 요청)`);
@@ -155,6 +159,7 @@ export async function generateQuizWithFallback(
         schema: QuizSchema,
         system: SYSTEM_PROMPT,
         prompt: createUserPrompt(content, options),
+        maxRetries: 0, // SDK 자동 재시도 비활성화 (다중 모델 폴백이 대신 처리)
       });
 
       const aiDuration = Date.now() - aiStartTime;
@@ -175,6 +180,9 @@ export async function generateQuizWithFallback(
           .slice(0, options.questionCount) // 요청한 개수만큼 자르기
           .map((q) => ({
             ...q,
+            // OpenAI strict mode는 nullable() 반환 → 내부 타입(undefined)으로 변환
+            options: q.options ?? undefined,
+            explanation: q.explanation ?? undefined,
             correctAnswers: q.correctAnswers,
           })),
         createdAt: new Date(),
@@ -196,6 +204,13 @@ export async function generateQuizWithFallback(
       logger.error('AI', `❌ ${model.name} 실패 (${aiDuration}ms)`, {
         error: err.message || String(error),
       });
+
+      // [I-12] Strict 모드: 지정 모델 실패 시 즉시 에러 반환 (classifyError 이전)
+      if (isStrict) {
+        throw new Error(
+          `${getModelDisplayName(model.name)} 모델 사용 중 오류가 발생했습니다. 다른 모델을 선택하거나 자동 모드를 사용해주세요.`
+        );
+      }
 
       // 에러 분류
       const aiError: AIError = classifyError(error, model.name);

@@ -253,7 +253,11 @@ export async function generateQuestionBatch(
       }
     } catch (error) {
       console.error(`[BatchGen] Batch ${i + 1} failed:`, error);
-      // 배치 실패 시 계속 진행
+      // Strict 모드: 지정 모델 실패 시 즉시 에러 전파 (재시도 없음)
+      if (options.preferredModel && options.preferredModel !== 'auto') {
+        throw error;
+      }
+      // Auto 모드: 배치 실패 시 계속 진행
     }
   }
 

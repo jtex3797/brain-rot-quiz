@@ -57,6 +57,7 @@ export async function hashOptions(options: QuizGenerationOptions): Promise<strin
   const normalized = JSON.stringify({
     difficulty: options.difficulty,
     questionCount: options.questionCount,
+    preferredModel: options.preferredModel, // [I-1] 모델별 캐시 분리
   });
   return hashContent(normalized);
 }

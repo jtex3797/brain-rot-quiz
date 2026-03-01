@@ -12,9 +12,9 @@ export const QuizSchema = z.object({
       id: z.string().describe('문제 고유 ID'),
       type: z.enum(['mcq', 'ox', 'short', 'fill']).describe('문제 유형'),
       questionText: z.string().describe('문제 텍스트 (빈칸은 [____]로 표시)'),
-      options: z.array(z.string()).optional().describe('객관식 보기 (4개)'),
+      options: z.array(z.string()).nullable().describe('객관식/OX 보기 (객관식: 4개, OX: ["O","X"]), 단답형/빈칸은 null'),
       correctAnswers: z.array(z.string()).min(1).describe('정답 목록 (첫 번째가 대표 정답, 나머지는 대안)'),
-      explanation: z.string().optional().describe('해설'),
+      explanation: z.string().nullable().describe('해설, 없으면 null'),
     })
   ),
 });

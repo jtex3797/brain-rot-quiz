@@ -126,10 +126,12 @@ export async function getBankByHash(
  */
 export async function getOrCreateBank(
   content: string,
-  maxCapacity: number
+  maxCapacity: number,
+  modelKey?: string // 모델별 별도 뱅크 생성 (strict mode)
 ): Promise<CreateBankResult> {
   try {
-    const contentHash = await hashContent(content);
+    const hashInput = modelKey ? `${content}:${modelKey}` : content;
+    const contentHash = await hashContent(hashInput);
     const supabase = await createClient();
 
     // 1. 먼저 기존 은행 확인

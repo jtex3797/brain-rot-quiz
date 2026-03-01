@@ -59,14 +59,24 @@ export async function getOrGenerateQuestionBank(
 ): Promise<BankGenerationResult> {
   const startTime = Date.now();
 
+  // Strict 모드: 지정 모델 전용 뱅크 사용 (auto 뱅크와 분리)
+  const modelKey = (options.preferredModel && options.preferredModel !== 'auto')
+    ? options.preferredModel
+    : undefined;
+
+  if (modelKey) {
+    logger.info('Bank', `⚡ Strict 모드 — ${modelKey} 전용 뱅크 사용`);
+  }
+
   logger.info('Bank', '🔍 문제 은행 조회/생성 시작', {
     '세션 크기': sessionSize,
     '최대 생성': maxGenerate ?? '자동',
     '텍스트 길이': content.length,
   });
 
-  // 1. 콘텐츠 해시 생성
-  const contentHash = await hashContent(content);
+  // 1. 콘텐츠 해시 생성 (strict mode: 모델별 별도 해시)
+  const hashInput = modelKey ? `${content}:${modelKey}` : content;
+  const contentHash = await hashContent(hashInput);
 
   // 2. 기존 은행 확인
   const existingBank = await getBankByHash(contentHash);
@@ -127,7 +137,7 @@ export async function getOrGenerateQuestionBank(
   });
 
   // 5. DB에 은행 생성 또는 조회
-  const createResult = await getOrCreateBank(content, capacity.max);
+  const createResult = await getOrCreateBank(content, capacity.max, modelKey);
 
   if (!createResult.success || !createResult.bank) {
     logger.error('Bank', '❌ 은행 생성 실패', { error: createResult.error });

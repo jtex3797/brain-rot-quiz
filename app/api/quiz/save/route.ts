@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
+import { VALID_MODEL_VALUES } from '@/lib/constants';
 import type { Question } from '@/types';
 
 /**
@@ -12,12 +13,20 @@ import type { Question } from '@/types';
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { quiz, sourceText, difficulty } = body;
+        const { quiz, sourceText, difficulty, aiModel } = body;
 
         // 입력 검증
         if (!quiz || !quiz.id || !quiz.questions) {
             return NextResponse.json(
                 { success: false, error: '유효하지 않은 퀴즈 데이터입니다' },
+                { status: 400 }
+            );
+        }
+
+        // aiModel 허용 목록 검증
+        if (aiModel !== undefined && aiModel !== null && !(VALID_MODEL_VALUES as string[]).includes(aiModel)) {
+            return NextResponse.json(
+                { success: false, error: '지원하지 않는 AI 모델입니다' },
                 { status: 400 }
             );
         }
@@ -56,6 +65,7 @@ export async function POST(req: NextRequest) {
                 is_public: false,
                 share_code: shareCode,
                 bank_id: quiz.bankId ?? null,
+                ai_model: aiModel ?? null,
             });
 
         if (quizError) {

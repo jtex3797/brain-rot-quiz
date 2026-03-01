@@ -11,6 +11,8 @@ import {
   QUESTION_COUNT,
   SESSION_SIZE,
   ERROR_MESSAGES,
+  VALID_MODEL_VALUES,
+  getModelDisplayName,
   type Difficulty,
 } from '@/lib/constants';
 import {
@@ -40,7 +42,8 @@ export async function POST(req: NextRequest) {
     const { content, difficulty = 'medium', bypassCache = false } = body;
     // sessionSize 지원 + sessionSize 하위 호환
     const sessionSize = body.sessionSize ?? SESSION_SIZE.DEFAULT;
-    endStep({ sessionSize, difficulty, bypassCache });
+    const preferredModel: string | undefined = body.preferredModel;
+    endStep({ sessionSize, difficulty, bypassCache, preferredModel });
 
     // 입력 검증
     startStep('입력 검증');
@@ -80,13 +83,25 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // [I-14] preferredModel 검증 — 캐스팅 필수 (VALID_MODEL_VALUES가 리터럴 유니온 배열)
+    if (preferredModel !== undefined && !(VALID_MODEL_VALUES as string[]).includes(preferredModel)) {
+      endStep();
+      endPipeline(false, { error: 'INVALID_MODEL', preferredModel });
+      return NextResponse.json(
+        { error: '지원하지 않는 AI 모델입니다' },
+        { status: 400 }
+      );
+    }
     endStep();
 
     // 퀴즈 생성 옵션 (questionCount는 하위 호환용)
+    // [I-1] Auto 모드일 때 preferredModel 제외 → 기존 캐시와 해시 동일하게 유지 (하위 호환)
     const options = {
       questionCount: sessionSize,
       difficulty: difficulty as Difficulty,
       bypassCache: Boolean(bypassCache),
+      ...(preferredModel && preferredModel !== 'auto' ? { preferredModel } : {}),
     };
 
     logger.info('API', '📥 요청 정보', {
@@ -140,6 +155,15 @@ export async function POST(req: NextRequest) {
         remainingCount: bankResult.remainingCount,
       });
 
+      // [I-11] Strict 모드 실패 감지: batchGenerator가 에러를 삼켜 빈 배열 반환
+      if (preferredModel && preferredModel !== 'auto' && bankResult.questions.length === 0) {
+        endPipeline(false, { error: 'STRICT_MODEL_FAILED', model: preferredModel });
+        return NextResponse.json(
+          { success: false, error: `${getModelDisplayName(preferredModel)} 모델 사용 중 오류가 발생했습니다. 다른 모델을 선택하거나 자동 모드를 사용해주세요.` },
+          { status: 500 }
+        );
+      }
+
       startStep('퀴즈 객체 생성');
       const rawQuiz = {
         id: crypto.randomUUID(),
@@ -167,17 +191,22 @@ export async function POST(req: NextRequest) {
       }
       endStep({ valid: true, sessionSize: quiz.questions.length });
 
+      // [I-2] Strict 모드 시 실제 모델명 반환
+      const dbBankModel = (preferredModel && preferredModel !== 'auto')
+        ? preferredModel
+        : 'db-bank-system';
+
       endPipeline(true, {
         quizId: quiz.id,
         sessionSize: quiz.questions.length,
-        model: 'db-bank-system',
+        model: dbBankModel,
         isFromCache: bankResult.isFromCache,
       });
 
       return NextResponse.json({
         success: true,
         quiz,
-        model: 'db-bank-system',
+        model: dbBankModel,
         bankId: bankResult.bankId,
         remainingCount: bankResult.remainingCount,
         isFromCache: bankResult.isFromCache,
@@ -201,6 +230,15 @@ export async function POST(req: NextRequest) {
         tokensUsed: poolResult.metadata.tokensUsed,
       });
 
+      // [I-11] Strict 모드 실패 감지: batchGenerator가 에러를 삼켜 빈 배열 반환
+      if (preferredModel && preferredModel !== 'auto' && poolResult.questions.length === 0) {
+        endPipeline(false, { error: 'STRICT_MODEL_FAILED', model: preferredModel });
+        return NextResponse.json(
+          { success: false, error: `${getModelDisplayName(preferredModel)} 모델 사용 중 오류가 발생했습니다. 다른 모델을 선택하거나 자동 모드를 사용해주세요.` },
+          { status: 500 }
+        );
+      }
+
       startStep('퀴즈 객체 생성');
       const rawQuiz = createQuizFromPool(poolResult, '생성된 퀴즈');
       rawQuiz.sessionSize = sessionSize; // 세션당 문제 수
@@ -223,17 +261,22 @@ export async function POST(req: NextRequest) {
       }
       endStep({ valid: true, sessionSize: quiz.questions.length });
 
+      // [I-5] Strict 모드 시 실제 모델명 반환
+      const poolModel = (preferredModel && preferredModel !== 'auto')
+        ? preferredModel
+        : 'pool-system';
+
       endPipeline(true, {
         quizId: quiz.id,
         sessionSize: quiz.questions.length,
-        model: 'pool-system',
+        model: poolModel,
         tokensUsed: poolResult.metadata.tokensUsed,
       });
 
       return NextResponse.json({
         success: true,
         quiz,
-        model: 'pool-system',
+        model: poolModel,
         tokensUsed: poolResult.metadata.tokensUsed,
         poolMetadata: poolResult.metadata,
         capacity,
