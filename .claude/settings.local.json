@@ -18,7 +18,8 @@
       "Bash(npm run lint)",
       "Bash(grep:*)",
       "Bash(node -e:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(head -100 \"c:\\\\jte-workspace\\\\my-project\\\\brain-rot-quiz/app/\\(main\\)/my-quizzes/page.tsx\")"
     ]
   }
 }

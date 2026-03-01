@@ -67,6 +67,40 @@ export function QuestionCard({
     };
   }, []);
 
+  // 수동 모드에서 Enter 키로 다음 문제 넘기기
+  useEffect(() => {
+    if (!showResult || autoNext || showEditModal) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && selectedAnswer && matchResult) {
+        onAnswer(selectedAnswer, matchResult.isCorrect, matchResult);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showResult, autoNext, showEditModal, selectedAnswer, matchResult, onAnswer]);
+
+  // autoNext 토글 시 showResult 상태와 동기화
+  useEffect(() => {
+    if (!showResult || !matchResult || !selectedAnswer) return;
+
+    if (autoNext) {
+      // 수동 → 자동: 타이머 없으면 새로 설정
+      if (!timeoutRef.current) {
+        timeoutRef.current = setTimeout(() => {
+          onAnswer(selectedAnswer, matchResult.isCorrect, matchResult);
+        }, 1500);
+      }
+    } else {
+      // 자동 → 수동: 실행 중인 타이머 취소
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+  }, [autoNext]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleOptionClick = (option: string) => {
     if (disabled || showResult) return;
 
@@ -187,6 +221,7 @@ export function QuestionCard({
             value={shortAnswer}
             onChange={(e) => setShortAnswer(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleShortAnswerSubmit()}
+            autoFocus
             placeholder="정답을 입력하세요..."
             disabled={disabled || showResult}
             className="w-full rounded-xl border-2 border-foreground/20 bg-background p-4 text-foreground placeholder:text-foreground/50 focus:border-primary focus:outline-none disabled:opacity-50"
