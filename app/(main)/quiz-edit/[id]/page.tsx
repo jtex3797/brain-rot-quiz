@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
@@ -9,7 +9,10 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { QuestionEditor } from '@/components/quiz-edit/QuestionEditor';
 import { AddQuestionButton } from '@/components/quiz-edit/AddQuestionButton';
+import { ImportJsonSection } from '@/components/quiz-edit/ImportJsonSection';
+import { buildQuizExportJson, downloadQuizJson } from '@/lib/utils/quizJson';
 import type { Quiz, Question, QuizType, QuestionUpdate } from '@/types';
+import type { QuizJson } from '@/lib/utils/quizJson';
 
 export default function QuizEditPage() {
     const { user, isLoading: authLoading } = useAuth();
@@ -25,6 +28,7 @@ export default function QuizEditPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const skipBeforeUnload = useRef(false);
 
     // 퀴즈 데이터 로드
     useEffect(() => {
@@ -75,6 +79,7 @@ export default function QuizEditPage() {
         if (!originalQuiz) return false;
 
         const titleChanged = title !== originalQuiz.title;
+        const difficultyChanged = difficulty !== (originalQuiz.difficulty ?? null);
         const questionsChanged =
             JSON.stringify(questions) !==
             JSON.stringify(
@@ -88,13 +93,13 @@ export default function QuizEditPage() {
                 }))
             );
 
-        return titleChanged || questionsChanged;
-    }, [title, questions, originalQuiz]);
+        return titleChanged || difficultyChanged || questionsChanged;
+    }, [title, difficulty, questions, originalQuiz]);
 
     // 이탈 방지
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            if (hasChanges) {
+            if (hasChanges && !skipBeforeUnload.current) {
                 e.preventDefault();
                 e.returnValue = '';
             }
@@ -189,6 +194,40 @@ export default function QuizEditPage() {
         }
     };
 
+    // JSON 내보내기
+    const handleExport = () => {
+        const exportData = buildQuizExportJson({
+            title,
+            difficulty,
+            questions: questions.filter((q) => !q._delete),
+        });
+        downloadQuizJson(exportData);
+    };
+
+    // JSON 가져오기 (전체 교체)
+    async function handleJsonImport(importData: QuizJson): Promise<void> {
+        try {
+            const response = await fetch(`/api/quiz/${quizId}/replace`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: importData.title,
+                    difficulty: importData.difficulty,
+                    questions: importData.questions,
+                }),
+            });
+            const result = await response.json();
+            if (result.success) {
+                skipBeforeUnload.current = true;
+                window.location.reload();
+            } else {
+                alert(result.error ?? '교체에 실패했습니다');
+            }
+        } catch {
+            alert('교체 중 오류가 발생했습니다');
+        }
+    }
+
     // 취소
     const handleCancel = () => {
         if (hasChanges && !confirm('변경 사항이 저장되지 않습니다. 정말 나가시겠습니까?')) {
@@ -232,6 +271,11 @@ export default function QuizEditPage() {
                 title="퀴즈 수정"
                 description="문제와 정답을 수정할 수 있습니다"
                 backLink={{ href: "/my-quizzes", label: "내 퀴즈" }}
+                actions={
+                    <Button variant="outline" size="sm" onClick={handleExport}>
+                        JSON 내보내기
+                    </Button>
+                }
             />
 
             {/* 메타데이터 편집 */}
@@ -269,6 +313,9 @@ export default function QuizEditPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* JSON 일괄 교체 */}
+            <ImportJsonSection onImport={handleJsonImport} />
 
             {/* 문제 목록 */}
             <div className="space-y-4 mb-6">

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
+import type { DbSavedQuiz } from '@/types/supabase';
 
 /**
  * GET /api/my-quizzes
@@ -10,7 +11,8 @@ import { logger } from '@/lib/utils/logger';
  */
 export async function GET() {
     try {
-        const supabase = await createClient();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const supabase = await createClient() as any;
 
         // getUser()로 인증 확인 (getSession 보안 경고 해결)
         const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -41,7 +43,7 @@ export async function GET() {
             );
         }
 
-        const quizList = quizzes ?? [];
+        const quizList = (quizzes ?? []) as DbSavedQuiz[];
 
         // bank_id가 있는 퀴즈의 고유 bank_id 목록
         const bankIds = [...new Set(
@@ -57,7 +59,7 @@ export async function GET() {
                 .in('bank_id', bankIds);
 
             if (items) {
-                bankCounts = items.reduce<Record<string, number>>((acc, item) => {
+                bankCounts = (items as Array<{ bank_id: string }>).reduce<Record<string, number>>((acc, item) => {
                     acc[item.bank_id] = (acc[item.bank_id] ?? 0) + 1;
                     return acc;
                 }, {});

@@ -8,8 +8,11 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
+import { ImportJsonSection } from '@/components/quiz-edit/ImportJsonSection';
+import { buildQuizExportJson, downloadQuizJson, quizJsonToImportBody } from '@/lib/utils/quizJson';
 import { getModelDisplayName } from '@/lib/constants';
 import type { DbQuiz } from '@/types/supabase';
+import type { QuizJson } from '@/lib/utils/quizJson';
 
 type EnrichedQuiz = DbQuiz & { bank_question_count?: number | null };
 
@@ -19,6 +22,7 @@ export default function MyQuizzesPage() {
   const [quizzes, setQuizzes] = useState<EnrichedQuiz[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showImportSection, setShowImportSection] = useState(false);
 
   // 퀴즈 목록 로드 (서버 API 사용)
   useEffect(() => {
@@ -67,6 +71,52 @@ export default function MyQuizzesPage() {
       alert('삭제 중 오류가 발생했습니다');
     }
     setDeletingId(null);
+  }
+
+  // 퀴즈 JSON 내보내기
+  async function handleExport(quizId: string) {
+    try {
+      const response = await fetch(`/api/quiz/${quizId}`);
+      const data = await response.json();
+      if (!data.quiz) {
+        alert('퀴즈를 불러올 수 없습니다');
+        return;
+      }
+      const exportData = buildQuizExportJson({
+        title: data.quiz.title,
+        difficulty: data.quiz.difficulty,
+        questions: data.quiz.questions,
+      });
+      downloadQuizJson(exportData);
+    } catch {
+      alert('내보내기 중 오류가 발생했습니다');
+    }
+  }
+
+  // JSON으로 새 퀴즈 만들기
+  async function handleNewQuizImport(data: QuizJson): Promise<void> {
+    try {
+      const quizId = crypto.randomUUID();
+      const questions = quizJsonToImportBody(data);
+      const response = await fetch('/api/quiz/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quiz: { id: quizId, title: data.title, questions },
+          difficulty: data.difficulty ?? undefined,
+          sourceText: null,
+          aiModel: null,
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        router.push(`/quiz-edit/${quizId}`);
+      } else {
+        alert(result.error ?? '가져오기에 실패했습니다');
+      }
+    } catch {
+      alert('가져오기 중 오류가 발생했습니다');
+    }
   }
 
   // 난이도 뱃지 색상
@@ -128,11 +178,26 @@ export default function MyQuizzesPage() {
       <PageHeader
         title="내 퀴즈"
         actions={
-          <Link href="/upload">
-            <Button variant="primary">+ 새 퀴즈 만들기</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowImportSection((v) => !v)}
+            >
+              {showImportSection ? 'JSON 가져오기 닫기' : 'JSON 가져오기'}
+            </Button>
+            <Link href="/upload">
+              <Button variant="primary">+ 새 퀴즈 만들기</Button>
+            </Link>
+          </div>
         }
       />
+
+      {showImportSection && (
+        <ImportJsonSection
+          onImport={handleNewQuizImport}
+          confirmLabel="새 퀴즈 만들기"
+        />
+      )}
 
       {/* 퀴즈 목록 */}
       {quizzes.length === 0 ? (
@@ -212,6 +277,13 @@ export default function MyQuizzesPage() {
                       onClick={() => router.push(`/quiz-edit/${quiz.id}`)}
                     >
                       수정
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleExport(quiz.id)}
+                    >
+                      내보내기
                     </Button>
                     <Button
                       variant="outline"
