@@ -27,6 +27,7 @@ export interface Question {
 export interface Quiz {
   id: string;
   title: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
   questions: Question[];
   createdAt: Date;
   // Question Bank 시스템용 (500자 이상 텍스트)

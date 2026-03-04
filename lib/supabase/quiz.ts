@@ -61,6 +61,7 @@ export function fromDbQuiz(dbQuiz: DbSavedQuiz, dbQuestions: DbSavedQuestion[]):
   return {
     id: dbQuiz.id,
     title: dbQuiz.title,
+    difficulty: dbQuiz.difficulty ?? undefined,
     questions: dbQuestions
       .sort((a, b) => a.order_index - b.order_index)
       .map(fromDbQuestion),
