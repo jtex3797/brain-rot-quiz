@@ -11,10 +11,10 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { ImportJsonSection } from '@/components/quiz-edit/ImportJsonSection';
 import { buildQuizExportJson, downloadQuizJson, quizJsonToImportBody } from '@/lib/utils/quizJson';
 import { getModelDisplayName } from '@/lib/constants';
-import type { DbQuiz } from '@/types/supabase';
+import type { DbSavedQuiz } from '@/types/supabase';
 import type { QuizJson } from '@/lib/utils/quizJson';
 
-type EnrichedQuiz = DbQuiz & { bank_question_count?: number | null };
+type EnrichedQuiz = DbSavedQuiz & { bank_question_count?: number | null };
 
 export default function MyQuizzesPage() {
   const { user, isLoading: authLoading } = useAuth();

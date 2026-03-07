@@ -48,10 +48,10 @@ export function ImportJsonSection({
         const file = e.target.files?.[0];
         if (!file) return;
 
+        e.target.value = '';
         const reader = new FileReader();
         reader.onload = (ev) => {
             const content = ev.target?.result as string;
-            setText(content);
             handleTextChange(content);
         };
         reader.readAsText(file, 'utf-8');
