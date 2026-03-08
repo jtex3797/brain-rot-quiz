@@ -1,3 +1,5 @@
+export const maxDuration = 60;
+
 import { NextRequest, NextResponse } from 'next/server';
 import { generateQuiz, validateQuiz, normalizeQuiz } from '@/lib/ai/generate';
 import {
@@ -43,7 +45,8 @@ export async function POST(req: NextRequest) {
     // sessionSize 지원 + sessionSize 하위 호환
     const sessionSize = body.sessionSize ?? SESSION_SIZE.DEFAULT;
     const preferredModel: string | undefined = body.preferredModel;
-    endStep({ sessionSize, difficulty, bypassCache, preferredModel });
+    const enableTransform = body.enableTransform === true; // 기본 false
+    endStep({ sessionSize, difficulty, bypassCache, preferredModel, enableTransform });
 
     // 입력 검증
     startStep('입력 검증');
@@ -147,7 +150,7 @@ export async function POST(req: NextRequest) {
       // DB 문제 은행 시스템 사용 (500자 이상) - 개별 문제 저장 + 더 풀기 지원
       startStep('DB 문제 은행 시스템');
       // 세션 크기만큼 반환하되, 텍스트 용량 최대치로 생성
-      const bankResult = await getOrGenerateQuestionBank(content, options, sessionSize, capacity.max);
+      const bankResult = await getOrGenerateQuestionBank(content, options, sessionSize, capacity.max, enableTransform);
       endStep({
         bankId: bankResult.bankId,
         isFromCache: bankResult.isFromCache,
@@ -221,8 +224,7 @@ export async function POST(req: NextRequest) {
       startStep('메모리 문제 풀 시스템');
       const poolResult = await generateQuestionPool(content, options, {
         targetCount: sessionSize,
-        aiRatio: 0.7,
-        transformRatio: 0.3,
+        enableTransform,
       });
       endStep({
         aiGenerated: poolResult.metadata.aiGenerated,

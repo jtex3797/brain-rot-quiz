@@ -31,6 +31,7 @@ export interface QuestionPoolConfig {
   maxBatches: number;
   transformationOptions: TransformationOptions;
   bypassCapacityCheck?: boolean;
+  enableTransform?: boolean; // 변형 문제 사용 여부 (기본: true)
 }
 
 // =====================================================
@@ -60,6 +61,7 @@ export const DEFAULT_POOL_CONFIG: QuestionPoolConfig = {
   maxBatches: QUESTION_COUNT.MAX_BATCHES,
   transformationOptions: DEFAULT_TRANSFORMATION_OPTIONS,
   bypassCapacityCheck: false,
+  enableTransform: true,
 };
 
 // =====================================================
@@ -88,10 +90,15 @@ export async function generateQuestionPool(
     targetCount: config.targetCount ?? options.questionCount,
   };
 
+  // enableTransform=false이면 AI 100%, 변형 0%
+  const effectiveAiRatio = fullConfig.enableTransform ? fullConfig.aiRatio : 1.0;
+  const effectiveTransformRatio = fullConfig.enableTransform ? fullConfig.transformRatio : 0;
+
   logger.info('Pool', '🎱 문제 풀 생성 시작', {
     '목표 문제 수': fullConfig.targetCount,
-    'AI 비율': `${fullConfig.aiRatio * 100}%`,
-    '변형 비율': `${fullConfig.transformRatio * 100}%`,
+    'AI 비율': `${effectiveAiRatio * 100}%`,
+    '변형 비율': `${effectiveTransformRatio * 100}%`,
+    '변형 사용': fullConfig.enableTransform,
   });
 
   // 1. 텍스트 분석 및 최대 문제 수 확인
@@ -111,7 +118,7 @@ export async function generateQuestionPool(
   }
 
   // 2. AI 생성 목표 수 계산
-  const aiTargetCount = Math.ceil(adjustedTarget * fullConfig.aiRatio);
+  const aiTargetCount = Math.ceil(adjustedTarget * effectiveAiRatio);
 
   // 3. AI 배치 생성
   let batchResult: BatchGenerationResult;
@@ -148,7 +155,7 @@ export async function generateQuestionPool(
   let transformedCount = 0;
 
   const transformTarget = adjustedTarget - allQuestions.length;
-  if (transformTarget > 0 && fullConfig.transformRatio > 0) {
+  if (transformTarget > 0 && effectiveTransformRatio > 0) {
     const transformStart = Date.now();
     logger.info('Transform', `문제 변형 시작 (추가 목표: ${transformTarget}문제)`);
 

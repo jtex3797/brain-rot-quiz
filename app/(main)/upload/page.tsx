@@ -42,6 +42,7 @@ export default function UploadPage() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelOption>('auto');
+  const [enableTransform, setEnableTransform] = useState(false);
 
   // 텍스트 분석 상태
   const [textCapacity, setTextCapacity] = useState<QuestionCapacity | null>(null);
@@ -120,6 +121,7 @@ export default function UploadPage() {
           sessionSize: questionCount, // 세션당 문제 수
           difficulty,
           preferredModel: selectedModel, // [I-8] 선택된 모델 전달
+          enableTransform,
         }),
       });
 
@@ -355,6 +357,26 @@ export default function UploadPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* 문제 변형 옵션 */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-foreground">
+                  고급 옵션
+                </label>
+                <button
+                  onClick={() => setEnableTransform(!enableTransform)}
+                  disabled={loading}
+                  className={`w-full rounded-lg border-2 p-3 text-left transition-colors ${enableTransform
+                    ? 'border-primary bg-primary/10'
+                    : 'border-foreground/20 hover:border-foreground/40'
+                    } disabled:opacity-50`}
+                >
+                  <div className="font-medium text-foreground">문제 변형 생성</div>
+                  <div className="text-sm text-foreground/60">
+                    AI 문제를 변형하여 추가 문제 생성 (품질 낮을 수 있음)
+                  </div>
+                </button>
               </div>
 
               {/* 생성 버튼 */}

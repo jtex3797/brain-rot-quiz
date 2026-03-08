@@ -22,7 +22,7 @@ import type { Question, QuizGenerationOptions, QuestionPoolResult } from '@/type
 // =====================================================
 
 /** 은행 최대 용량 */
-const MAX_BANK_CAPACITY = 100;
+const MAX_BANK_CAPACITY = 80;
 
 // =====================================================
 // Types
@@ -55,27 +55,33 @@ export async function getOrGenerateQuestionBank(
   content: string,
   options: QuizGenerationOptions,
   sessionSize: number,
-  maxGenerate?: number
+  maxGenerate?: number,
+  enableTransform: boolean = true
 ): Promise<BankGenerationResult> {
   const startTime = Date.now();
 
-  // Strict 모드: 지정 모델 전용 뱅크 사용 (auto 뱅크와 분리)
-  const modelKey = (options.preferredModel && options.preferredModel !== 'auto')
+  // 모델 키: 지정 모델 + 변형 여부를 결합하여 뱅크 분리
+  const rawModelKey = (options.preferredModel && options.preferredModel !== 'auto')
     ? options.preferredModel
     : undefined;
+  const transformKey = enableTransform ? 'transform' : 'pure';
+  const modelKey = rawModelKey
+    ? `${rawModelKey}:${transformKey}`
+    : transformKey;
 
-  if (modelKey) {
-    logger.info('Bank', `⚡ Strict 모드 — ${modelKey} 전용 뱅크 사용`);
+  if (rawModelKey) {
+    logger.info('Bank', `⚡ Strict 모드 — ${rawModelKey} 전용 뱅크 사용`);
   }
 
   logger.info('Bank', '🔍 문제 은행 조회/생성 시작', {
     '세션 크기': sessionSize,
     '최대 생성': maxGenerate ?? '자동',
     '텍스트 길이': content.length,
+    '변형 사용': enableTransform,
   });
 
-  // 1. 콘텐츠 해시 생성 (strict mode: 모델별 별도 해시)
-  const hashInput = modelKey ? `${content}:${modelKey}` : content;
+  // 1. 콘텐츠 해시 생성 (모델+변형별 별도 해시)
+  const hashInput = `${content}:${modelKey}`;
   const contentHash = await hashContent(hashInput);
 
   // 2. 기존 은행 확인
@@ -134,6 +140,7 @@ export async function getOrGenerateQuestionBank(
   const poolResult = await generateQuestionPool(content, options, {
     targetCount: bankSize,
     bypassCapacityCheck: true, // 서비스에서 이미 계산했으므로
+    enableTransform,
   });
 
   // 5. DB에 은행 생성 또는 조회

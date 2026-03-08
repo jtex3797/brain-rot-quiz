@@ -19,8 +19,8 @@ export const QUESTION_COUNT = {
   MIN: 3,
   MAX: 100,
   DEFAULT: 5,
-  BATCH_SIZE: 7,
-  MAX_BATCHES: 5,
+  BATCH_SIZE: 10,
+  MAX_BATCHES: 10,
 } as const;
 
 /** 세션당 문제 수 범위 (한 번에 푸는 묶음 단위) */

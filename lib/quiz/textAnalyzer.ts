@@ -34,7 +34,7 @@ const CAPACITY_CONSTANTS = {
   SENTENCES_PER_QUESTION: 0.5, // 2 문장당 1문제 (완화)
   KEYWORDS_PER_QUESTION: 5, // 5 키워드당 1문제 (완화: 10 → 5)
   MIN_CAPACITY: 1,
-  MAX_CAPACITY: 100, // 최대 용량 증가 (50 → 100)
+  MAX_CAPACITY: 80, // 추정치 보수화 (100 → 80)
   BLANK_MULTIPLIER_MAX: 2.5, // 빈칸 다중 생성 최대 배수
 } as const;
 
