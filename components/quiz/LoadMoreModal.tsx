@@ -14,6 +14,15 @@ interface LoadMoreModalProps {
   isLoading?: boolean;
 }
 
+function clampSelectableCount(count: number, remainingCount: number) {
+  const maxSelectable = Math.min(SESSION_SIZE.MAX, remainingCount);
+  const minSelectable = Math.min(SESSION_SIZE.MIN, remainingCount);
+
+  if (maxSelectable <= 0) return 0;
+
+  return Math.max(minSelectable, Math.min(count, maxSelectable));
+}
+
 export function LoadMoreModal({
   isOpen,
   onClose,
@@ -23,25 +32,25 @@ export function LoadMoreModal({
   isLoading = false,
 }: LoadMoreModalProps) {
   const [selectedCount, setSelectedCount] = useState(
-    Math.min(defaultCount, remainingCount)
+    clampSelectableCount(defaultCount, remainingCount)
   );
   const [shuffle, setShuffle] = useState(true);
 
   // remainingCount나 defaultCount가 변경되면 selectedCount 재설정
   useEffect(() => {
-    setSelectedCount(Math.min(defaultCount, remainingCount));
+    setSelectedCount(clampSelectableCount(defaultCount, remainingCount));
   }, [defaultCount, remainingCount]);
 
   const maxSelectable = Math.min(SESSION_SIZE.MAX, remainingCount);
   const minSelectable = Math.min(SESSION_SIZE.MIN, remainingCount);
 
   const handleConfirm = () => {
-    onConfirm(selectedCount, shuffle);
+    onConfirm(clampSelectableCount(selectedCount, remainingCount), shuffle);
   };
 
   // 빠른 선택 옵션 (남은 문제 수에 따라 동적 생성)
-  const quickOptions = [5, 10, 15, remainingCount]
-    .filter((n, i, arr) => n <= remainingCount && arr.indexOf(n) === i)
+  const quickOptions = [5, 10, 15, maxSelectable]
+    .filter((n, i, arr) => n > 0 && n <= maxSelectable && arr.indexOf(n) === i)
     .slice(0, 4);
 
   return (

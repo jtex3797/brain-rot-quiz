@@ -22,7 +22,7 @@ interface QuizResultProps {
   // Question Bank 시스템용
   bankId?: string;
   remainingCount?: number;
-  onLoadMore?: (count: number) => void;
+  onLoadMore?: (count: number, shuffle?: boolean) => void;
   isLoadingMore?: boolean;
   onResetAll?: () => void;
   sessionSize?: number; // 세션당 문제 수
@@ -59,9 +59,9 @@ export function QuizResult({
     }
   }, [sessionResult?.newBadges]);
 
-  const handleLoadMoreConfirm = (count: number) => {
+  const handleLoadMoreConfirm = (count: number, shuffle: boolean) => {
     setShowLoadMoreModal(false);
-    onLoadMore?.(count);
+    onLoadMore?.(count, shuffle);
   };
 
   const correctCount = answers.filter((a) => a.isCorrect).length;

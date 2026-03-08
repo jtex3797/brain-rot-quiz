@@ -7,11 +7,24 @@ import { QuizPlayer } from '@/components/quiz/QuizPlayer';
 import { Button } from '@/components/ui/Button';
 import { LoadMoreModal } from '@/components/quiz/LoadMoreModal';
 import { getQuizFromLocal, saveQuizToLocal } from '@/lib/utils/storage';
-import { ERROR_MESSAGES } from '@/lib/constants';
+import { ERROR_MESSAGES, SESSION_SIZE } from '@/lib/constants';
 import { MinimalHeader } from '@/components/layout/MinimalHeader';
 import type { Quiz, Question } from '@/types';
 
 type PageState = 'loading' | 'select' | 'error' | 'ready';
+
+function clampRequestCount(count: number) {
+    return Math.max(1, Math.min(count, SESSION_SIZE.MAX));
+}
+
+async function getResponseErrorMessage(response: Response, fallback: string) {
+    try {
+        const data = await response.json();
+        return typeof data?.error === 'string' ? data.error : fallback;
+    } catch {
+        return fallback;
+    }
+}
 
 export default function QuizPage() {
     const params = useParams<{ id: string }>();
@@ -25,6 +38,32 @@ export default function QuizPage() {
     const [remainingCount, setRemainingCount] = useState<number | undefined>(undefined);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [answeredQuestionIds, setAnsweredQuestionIds] = useState<string[]>([]);
+
+    const storageKey = `quiz_answered_${params.id}`;
+
+    const updateAnsweredIds = useCallback((ids: string[]) => {
+      const nextIds = Array.from(
+        new Set(ids.filter((id): id is string => typeof id === 'string'))
+      );
+      setAnsweredQuestionIds(nextIds);
+      try {
+        sessionStorage.setItem(storageKey, JSON.stringify(nextIds));
+      } catch {}
+    }, [storageKey]);
+
+    const readSavedAnsweredIds = useCallback((): string[] => {
+      try {
+        const saved = sessionStorage.getItem(storageKey);
+        if (!saved) return [];
+
+        const parsed = JSON.parse(saved);
+        if (!Array.isArray(parsed)) return [];
+
+        return parsed.filter((id): id is string => typeof id === 'string');
+      } catch {
+        return [];
+      }
+    }, [storageKey]);
 
     useEffect(() => {
         let cancelled = false;
@@ -59,7 +98,10 @@ export default function QuizPage() {
                             setIsDbQuiz(true);
                             setQuizOwnerId(data.ownerId);  // 플레이 중 수정용
                             setRemainingCount(dbQuiz.remainingCount);
-                            setAnsweredQuestionIds(dbQuiz.questions.map((q: Question) => q.id));
+                            const savedIds = readSavedAnsweredIds();
+                            setAnsweredQuestionIds(
+                              savedIds.length > 0 ? savedIds : dbQuiz.questions.map((q: Question) => q.id)
+                            );
 
                             // 내 퀴즈에서 진입 + 은행 존재 → 문제 수 선택 모달
                             if (isFromMyQuiz && dbQuiz.bankId) {
@@ -93,7 +135,10 @@ export default function QuizPage() {
                 setQuiz(loadedQuiz);
                 setIsDbQuiz(false);
                 setRemainingCount(loadedQuiz.remainingCount);
-                setAnsweredQuestionIds(loadedQuiz.questions.map(q => q.id));
+                const savedIds = readSavedAnsweredIds();
+                setAnsweredQuestionIds(
+                  savedIds.length > 0 ? savedIds : loadedQuiz.questions.map(q => q.id)
+                );
                 setPageState('ready');
                 console.log('[QuizPage] Quiz loaded from localStorage, ready');
             } catch (error) {
@@ -108,14 +153,16 @@ export default function QuizPage() {
         return () => {
             cancelled = true;
         };
-    }, [params.id]);
+    }, [params.id, readSavedAnsweredIds]);
 
     // 더 풀기 핸들러 (count: 사용자가 모달에서 선택한 문제 수)
-    const handleLoadMore = useCallback(async (count?: number) => {
+    const handleLoadMore = useCallback(async (count?: number, shuffle?: boolean) => {
         if (!quiz?.bankId || isLoadingMore) return;
 
         // 모달에서 선택한 수 또는 기본 세션 크기 사용
-        const loadCount = count ?? quiz.sessionSize ?? quiz.requestedQuestionCount ?? 5;
+        const loadCount = clampRequestCount(
+            count ?? quiz.sessionSize ?? quiz.requestedQuestionCount ?? 5
+        );
 
         setIsLoadingMore(true);
         try {
@@ -129,11 +176,12 @@ export default function QuizPage() {
                     bankId: quiz.bankId,
                     count: loadCount,
                     excludeIds, // 로그인 여부 무관하게 항상 전달
+                    shuffle,
                 }),
             });
 
             if (!response.ok) {
-                throw new Error('문제 로드 실패');
+                throw new Error(await getResponseErrorMessage(response, '문제 로드 실패'));
             }
 
             const data = await response.json();
@@ -149,7 +197,7 @@ export default function QuizPage() {
 
                 setQuiz(updatedQuiz);
                 setRemainingCount(data.remainingCount);
-                setAnsweredQuestionIds(excludeIds);
+                updateAnsweredIds(excludeIds);
 
                 // 로컬 스토리지도 업데이트
                 saveQuizToLocal(updatedQuiz);
@@ -159,14 +207,16 @@ export default function QuizPage() {
         } finally {
             setIsLoadingMore(false);
         }
-    }, [quiz, answeredQuestionIds, isLoadingMore]);
+    }, [quiz, answeredQuestionIds, isLoadingMore, updateAnsweredIds]);
 
     // 전체 다시 풀기 핸들러
     const handleResetAll = useCallback(async () => {
         if (!quiz?.bankId || isLoadingMore) return;
 
         // 세션 크기 사용 (기본값 5)
-        const loadCount = quiz.sessionSize ?? quiz.requestedQuestionCount ?? 5;
+        const loadCount = clampRequestCount(
+            quiz.sessionSize ?? quiz.requestedQuestionCount ?? 5
+        );
 
         setIsLoadingMore(true);
         try {
@@ -182,7 +232,7 @@ export default function QuizPage() {
             });
 
             if (!response.ok) {
-                throw new Error('문제 로드 실패');
+                throw new Error(await getResponseErrorMessage(response, '문제 로드 실패'));
             }
 
             const data = await response.json();
@@ -196,7 +246,7 @@ export default function QuizPage() {
                 };
 
                 // answeredQuestionIds를 새 문제로 리셋
-                setAnsweredQuestionIds(newQuestions.map(q => q.id));
+                updateAnsweredIds(newQuestions.map(q => q.id));
                 setQuiz(updatedQuiz);
                 setRemainingCount(data.remainingCount);
 
@@ -214,6 +264,8 @@ export default function QuizPage() {
     const handleStartWithCount = useCallback(async (count: number, shuffle: boolean) => {
         if (!quiz?.bankId) return;
 
+        const loadCount = clampRequestCount(count);
+
         setIsLoadingMore(true);
         try {
             // 이미 푼 문제 ID 수집 (중복 방지)
@@ -224,13 +276,15 @@ export default function QuizPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     bankId: quiz.bankId,
-                    count,
+                    count: loadCount,
                     shuffle,
                     excludeIds,
                 }),
             });
 
-            if (!response.ok) throw new Error('문제 로드 실패');
+            if (!response.ok) {
+                throw new Error(await getResponseErrorMessage(response, '문제 로드 실패'));
+            }
 
             const data = await response.json();
 
@@ -244,7 +298,7 @@ export default function QuizPage() {
 
                 setQuiz(updatedQuiz);
                 setRemainingCount(data.remainingCount);
-                setAnsweredQuestionIds([...excludeIds, ...newQuestions.map(q => q.id)]);
+                updateAnsweredIds([...excludeIds, ...newQuestions.map(q => q.id)]);
                 saveQuizToLocal(updatedQuiz);
             }
         } catch (error) {
@@ -253,7 +307,7 @@ export default function QuizPage() {
             setIsLoadingMore(false);
             setPageState('ready');
         }
-    }, [quiz, answeredQuestionIds]);
+    }, [quiz, answeredQuestionIds, updateAnsweredIds]);
 
     // 문제 수 선택 상태 (내 퀴즈 → 풀기)
     if (pageState === 'select' && quiz) {

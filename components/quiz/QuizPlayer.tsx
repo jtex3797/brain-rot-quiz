@@ -25,7 +25,7 @@ interface QuizPlayerProps {
   isDbQuiz?: boolean;
   quizOwnerId?: string;  // 퀴즈 소유자 ID (플레이 중 수정용)
   externalQuestionIdMap?: Record<string, string>;  // 외부에서 전달하는 questionId 매핑 (오답 복습용)
-  onLoadMore?: (count: number) => Promise<void>;
+  onLoadMore?: (count: number, shuffle?: boolean) => Promise<void>;
   isLoadingMore?: boolean;
   remainingCount?: number;
   onResetAll?: () => Promise<void>;
